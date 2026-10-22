@@ -1,0 +1,829 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>캡컷 에이전트</title>
+<style>
+  :root{
+    --bg:#0a0a0a; --card:#161616; --line:#232323; --line-soft:#1d1d1d;
+    --text:#ededed; --dim:#8a8a8a; --faint:#5a5a5a;
+    --accent:#22c55e; --danger:#ef4444;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-font-smoothing:antialiased}
+  body{
+    background:var(--bg); color:var(--text);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Pretendard","Segoe UI",
+         "Malgun Gothic",sans-serif;
+    font-variant-numeric:tabular-nums;
+    padding:48px 24px 96px;
+  }
+  .wrap{max-width:880px;margin:0 auto}
+  .num{font-variant-numeric:tabular-nums}
+  .mono{font-family:var(--mono)}
+
+  /* header */
+  header{display:flex;align-items:baseline;gap:12px;margin-bottom:6px}
+  h1{font-size:16px;font-weight:600;letter-spacing:-.01em}
+  .sub{color:var(--faint);font-size:13px}
+  .envrow{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 28px}
+  .chip{
+    font-family:var(--mono);font-size:11px;color:var(--dim);
+    background:#1c1c1c;border:1px solid #262626;border-radius:4px;
+    padding:3px 7px;white-space:nowrap;
+  }
+  .chip b{color:var(--text);font-weight:500}
+  .chip.bad{border-color:#3a2020;color:#e08a8a}
+
+  /* card */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px}
+  .card + .card{margin-top:16px}
+  .ttl{font-size:12px;font-weight:600;color:var(--dim);letter-spacing:.04em;
+       text-transform:uppercase;margin-bottom:16px}
+  hr{border:0;border-top:1px solid var(--line-soft);margin:16px 0}
+
+  /* dropzone */
+  #drop{
+    border:1px dashed #2c2c2c;border-radius:10px;padding:44px 20px;text-align:center;
+    cursor:pointer;transition:border-color .15s,background .15s;background:var(--card);
+  }
+  #drop:hover{border-color:#3a3a3a}
+  #drop.hot{border-color:var(--accent);background:#101a12}
+  #drop .big{font-size:14px;margin-bottom:6px}
+  #drop .small{color:var(--faint);font-size:12px}
+  #file{display:none}
+
+  /* progress */
+  .bar{height:2px;background:#202020;border-radius:2px;overflow:hidden;margin-top:14px}
+  .bar > i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s}
+
+  /* dot + stepper */
+  .dot{
+    width:6px;height:6px;border-radius:50%;background:#2e2e2e;flex:none;
+    transition:background .2s,box-shadow .2s;
+  }
+  .dot.run{background:var(--accent);box-shadow:0 0 0 3px rgba(34,197,94,.15),
+            0 0 10px 1px rgba(34,197,94,.55);animation:pulse 1.1s ease-in-out infinite}
+  .dot.ok{background:var(--accent)}
+  .dot.skip{background:#333}
+  .dot.err{background:var(--danger);box-shadow:0 0 10px 1px rgba(239,68,68,.5)}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+
+  .step{display:flex;align-items:center;gap:12px;padding:9px 0}
+  .step + .step{border-top:1px solid var(--line-soft)}
+  .step .lb{width:112px;color:var(--dim);flex:none}
+  .step.on .lb{color:var(--text)}
+  .step .dt{flex:1;color:var(--faint);font-size:13px}
+  .step.on .dt{color:var(--dim)}
+  .step .ms{font-family:var(--mono);font-size:11px;color:var(--faint)}
+
+  /* stats */
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line-soft);
+         border:1px solid var(--line-soft);border-radius:8px;overflow:hidden}
+  .stat{background:var(--card);padding:14px 16px}
+  .stat .k{font-size:11px;color:var(--faint);margin-bottom:5px}
+  .stat .v{font-size:19px;font-weight:600;letter-spacing:-.02em}
+  .stat .v small{font-size:12px;font-weight:400;color:var(--dim);margin-left:3px}
+  .stat .v.acc{color:var(--accent)}
+
+  /* timeline */
+  .tl{position:relative;height:26px;background:#101010;border:1px solid var(--line-soft);
+      border-radius:5px;overflow:hidden;cursor:pointer}
+  .tl .keep{position:absolute;top:0;bottom:0;background:rgba(34,197,94,.34)}
+  .tl .prot{position:absolute;top:0;bottom:0;background:rgba(34,197,94,.14);
+            border-left:1px solid var(--accent);border-right:1px solid var(--accent)}
+  .tl .ph{position:absolute;top:0;bottom:0;width:1px;background:#fff;opacity:.85}
+  .tl .mk{position:absolute;top:0;bottom:0;width:1px;background:var(--accent)}
+  .tlleg{display:flex;gap:16px;margin-top:8px;font-size:11px;color:var(--faint)}
+  .tlleg i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;
+           vertical-align:middle}
+
+  /* buttons + inputs */
+  button{
+    font:inherit;background:#1e1e1e;color:var(--text);border:1px solid #2b2b2b;
+    border-radius:6px;padding:7px 14px;cursor:pointer;transition:background .12s,border-color .12s;
+  }
+  button:hover:not(:disabled){background:#252525;border-color:#363636}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  button.pri{background:var(--accent);border-color:var(--accent);color:#04120a;font-weight:600}
+  button.pri:hover:not(:disabled){background:#2ad566;border-color:#2ad566}
+  button.sm{padding:4px 9px;font-size:12px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .opts{display:grid;grid-template-columns:repeat(3,1fr);gap:14px 20px}
+  .opt{display:flex;flex-direction:column;gap:5px}
+  .opt label{font-size:11px;color:var(--faint)}
+  .opt input[type=number],.opt select{
+    background:#101010;border:1px solid #262626;border-radius:5px;color:var(--text);
+    padding:6px 8px;font:inherit;font-family:var(--mono);font-size:12px;width:100%;
+  }
+  .opt input:focus,.opt select:focus{outline:none;border-color:#3a3a3a}
+  .checks{display:flex;flex-wrap:wrap;gap:16px}
+  .chk{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--dim);cursor:pointer}
+  .chk input{accent-color:var(--accent);width:14px;height:14px;cursor:pointer}
+
+  /* video */
+  video{width:100%;max-height:420px;background:#000;border-radius:8px;display:block}
+  .vwrap{display:grid;grid-template-columns:1fr 260px;gap:16px;align-items:start}
+  @media(max-width:760px){.vwrap{grid-template-columns:1fr}.opts{grid-template-columns:1fr 1fr}
+    .stats{grid-template-columns:1fr}}
+  .keyhint{font-size:12px;color:var(--faint);line-height:1.9}
+  .keyhint kbd{font-family:var(--mono);background:#1c1c1c;border:1px solid #2a2a2a;
+    border-bottom-width:2px;border-radius:4px;padding:1px 6px;font-size:11px;color:var(--dim)}
+  .marks{margin-top:10px;max-height:170px;overflow:auto}
+  .mkrow{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12px;
+         border-top:1px solid var(--line-soft)}
+  .mkrow .t{font-family:var(--mono);color:var(--dim);flex:1}
+
+  /* transcript */
+  .tr{max-height:400px;overflow:auto;margin-top:4px}
+  .tseg{display:flex;gap:12px;padding:7px 0;border-top:1px solid var(--line-soft);
+        cursor:pointer}
+  .tseg:first-child{border-top:0}
+  .tseg:hover{background:#191919}
+  .tseg .tm{font-family:var(--mono);font-size:11px;color:var(--faint);flex:none;width:52px;
+            padding-top:2px}
+  .tseg .tx{flex:1}
+  .tseg.cut .tx{color:var(--faint);text-decoration:line-through;
+                text-decoration-color:#3a3a3a}
+  .tag{font-family:var(--mono);font-size:10px;padding:1px 5px;border-radius:3px;
+       border:1px solid #2b2b2b;color:var(--faint);flex:none;align-self:flex-start;
+       margin-top:2px}
+  .tag.ng{border-color:#3a2020;color:#c08080}
+
+  .err{border-color:#3a2020;background:#160f0f;color:#e6a5a5}
+  .hide{display:none}
+  .muted{color:var(--faint);font-size:12px}
+  .ok{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>캡컷 에이전트</h1>
+    <span class="sub">토킹 영상 → 무음·잔말·NG 컷 + 자막 드래프트</span>
+  </header>
+  <div class="envrow" id="env"></div>
+
+  <!-- 1. 업로드 -->
+  <div id="drop">
+    <div class="big">영상을 여기로 끌어다 놓으세요</div>
+    <div class="small mono">mp4 · mov · mkv · webm · <b>여러 개 한꺼번에 놓아도 됩니다</b></div>
+    <div class="bar hide" id="upbar"><i></i></div>
+  </div>
+  <input type="file" id="file" multiple accept="video/mp4,video/quicktime,video/x-matroska,video/webm">
+
+  <!-- 1-b. 여러 개 대기열 -->
+  <div class="card hide" id="queuebox">
+    <div class="row" style="justify-content:space-between">
+      <b id="qtitle">여러 개 한 번에</b>
+      <span class="muted" id="qnote"></span>
+    </div>
+    <div class="muted" style="margin:6px 0 10px">
+      아래 용도만 고르고 <b>모두 시작</b>을 누르세요. 대본 추출은 한 번에 하나씩
+      돌아가니 순서대로 끝납니다. 자리를 비우셔도 됩니다.
+    </div>
+    <div id="qlist"></div>
+    <div class="row" style="margin-top:10px">
+      <button class="pri" id="qgo">모두 시작</button>
+      <button id="qclear">비우기</button>
+    </div>
+  </div>
+
+  <!-- 2. 프리뷰 + 옵션 -->
+  <div class="card hide" id="setup">
+    <div id="onefile">
+    <div class="ttl">원본</div>
+    <div class="vwrap">
+      <div>
+        <video id="vid" controls preload="metadata"></video>
+        <div class="tl" id="tl0" style="margin-top:10px"><div class="ph" id="ph0"></div></div>
+        <div class="tlleg">
+          <span><i style="background:rgba(34,197,94,.34)"></i>보존 구간</span>
+          <span class="mono" id="vmeta"></span>
+        </div>
+      </div>
+      <div>
+        <div class="keyhint">
+          <kbd>[</kbd> 보존 시작 · <kbd>]</kbd> 보존 끝<br>
+          <kbd>Space</kbd> 재생/정지 · <kbd>←</kbd><kbd>→</kbd> 1초<br>
+          여기 찍은 구간은 <span class="ok">무슨 일이 있어도</span> 안 잘립니다.
+        </div>
+        <div class="marks" id="marks"></div>
+      </div>
+    </div>
+
+    </div>
+    <hr>
+    <div class="ttl">용도</div>
+    <div class="row" id="presets" style="gap:10px"></div>
+    <div class="muted" id="presetnote" style="margin-top:10px"></div>
+
+    <hr>
+    <div class="ttl">컷 설정</div>
+    <div class="opts">
+      <div class="opt"><label>무음 임계 (dB) — 자동일 땐 안 씀</label>
+        <input type="number" id="noise_db" value="-38" step="1"></div>
+      <div class="opt"><label>무음 최소 길이 (초)</label>
+        <input type="number" id="min_silence_s" value="0.28" step="0.05" min="0.1"></div>
+      <div class="opt"><label>발화 앞뒤 여유 (초)</label>
+        <input type="number" id="pad_s" value="0.08" step="0.02" min="0"></div>
+      <div class="opt"><label>최소 조각 길이 (초)</label>
+        <input type="number" id="min_keep_s" value="0.4" step="0.05" min="0.1"></div>
+      <div class="opt"><label>NG 유사도 기준</label>
+        <input type="number" id="ng_similarity" value="0.78" step="0.02" min="0.5" max="1"></div>
+      <div class="opt"><label>자막 한 줄 최대 글자수</label>
+        <input type="number" id="subtitle_max_chars" value="23" step="1" min="8"></div>
+      <div class="opt"><label>자막 크기</label>
+        <input type="number" id="subtitle_size" value="7" step="0.5" min="3"></div>
+      <div class="opt"><label>자막 세로위치 (-1 아래 · +1 위)</label>
+        <input type="number" id="subtitle_y" value="-0.832" step="0.04" min="-1" max="1"></div>
+      <div class="opt"><label>드래프트 이름</label>
+        <input type="text" id="draft_name" placeholder="자동" style="background:#101010;
+          border:1px solid #262626;border-radius:5px;color:var(--text);padding:6px 8px;
+          font:inherit;font-family:var(--mono);font-size:12px;width:100%"></div>
+    </div>
+    <hr>
+    <div class="checks">
+      <label class="chk"><input type="checkbox" id="auto_noise" checked>
+        <b>무음 기준 자동</b> — 촬영본 소리 크기에 맞춰 잡음 (작게 녹음한 날 말이 잘리는 걸 막는다)</label>
+      <label class="chk"><input type="checkbox" id="use_profile" checked>
+        <b>내 편집 스타일</b> (배속 1.2 · 컷 성향)</label>
+      <label class="chk"><input type="checkbox" id="auto_zoom" checked>
+        <b>확대</b> — 강조 문장에서 1.2배로 당김 (대표님 완성본 방식)</label>
+      <label class="chk"><input type="checkbox" id="sfx" checked>
+        전환 효과음 (휙·훅) — <b>유튜브 풀링용.</b> 강의에는 안 들어감</label>
+      <label class="chk"><input type="checkbox" id="auto_emphasis" checked>
+        강조 자막 (빨강·파랑) — <b>유튜브 풀링용.</b> 한 번에 두 줄까지만. 강의에는 안 들어감</label>
+      <label class="chk"><input type="checkbox" id="slides">
+        <b>강의 장표(PPT) 얹기</b> — VOD 강의일 때만</label>
+      <label class="chk"><input type="checkbox" id="beats" checked>
+        비트 카드 (까만 전체화면) — <b>유튜브 풀링용.</b> 강의에는 안 들어감</label>
+    </div>
+    <div id="deckrow" class="row" style="display:none;margin-top:8px">
+      <span class="muted">장표 덱</span>
+      <select id="slide_deck">
+        <option value="">대본 보고 알아서 (권장)</option>
+      </select>
+    </div>
+    <div style="height:12px"></div>
+    <div class="checks">
+      <label class="chk"><input type="checkbox" id="asr_enabled" checked>대본 추출</label>
+      <label class="chk"><input type="checkbox" id="filler_enabled" checked>잔말 컷</label>
+      <label class="chk"><input type="checkbox" id="ng_enabled" checked>NG 컷</label>
+      <label class="chk"><input type="checkbox" id="subtitle_enabled" checked>자막 넣기</label>
+      <label class="chk"><input type="checkbox" id="subtitle_fill_gaps" checked>자막 끊김 없이</label>
+      <label class="chk"><input type="checkbox" id="use_cache" checked>대본 캐시</label>
+    </div>
+
+    <hr>
+    <details id="relaybox" style="margin-top:6px">
+      <summary style="cursor:pointer"><b>장표 다시 깔기</b>
+        <span class="muted">— 캡컷에서 컷을 손본 뒤에 누르세요</span></summary>
+      <div class="muted" style="margin:8px 0 10px">
+        컷은 그대로 두고 <b>자막을 컷에 맞춘 뒤 장표를 새로 깝니다.</b>
+        원본은 안 건드리고 <code>_v2</code> 로 새로 만듭니다.
+        <b>캡컷을 완전히 종료한 뒤</b> 눌러 주세요.
+      </div>
+      <div class="row"><button id="rlist">드래프트 불러오기</button>
+        <span class="muted" id="rnote"></span></div>
+      <div id="rtable" style="margin-top:10px"></div>
+      <pre id="rlog" style="display:none;max-height:220px;overflow:auto"></pre>
+    </details>
+    <hr>
+    <div class="row">
+      <button class="pri" id="go">드래프트 만들기</button>
+      <span class="muted" id="hint">첫 실행은 모델을 내려받느라 몇 분 걸립니다.</span>
+    </div>
+  </div>
+
+  <!-- 3. 진행 -->
+  <div class="card hide" id="prog">
+    <div class="ttl">진행</div>
+    <div id="steps"></div>
+  </div>
+
+  <!-- 4. 결과 -->
+  <div class="card hide" id="res">
+    <div class="ttl">결과</div>
+    <div class="stats" id="stats"></div>
+    <hr>
+    <div class="tl" id="tl1"></div>
+    <div class="tlleg">
+      <span><i style="background:rgba(34,197,94,.34)"></i>남는 구간</span>
+      <span><i style="background:#101010;border:1px solid #2a2a2a"></i>잘린 구간</span>
+    </div>
+    <hr>
+    <div class="row" style="justify-content:space-between">
+      <div class="row" style="gap:6px">
+        <span class="chip" id="dname"></span>
+      </div>
+      <div class="row">
+        <button class="sm" id="openf">폴더 열기</button>
+        <button class="sm pri" id="rerun">보존 구간 반영해 다시</button>
+      </div>
+    </div>
+    <div class="muted" style="margin-top:10px">
+      캡컷을 <b>완전히 종료 후 재실행</b>해야 목록에 뜹니다. 열어서 직접 재생해보세요.
+    </div>
+  </div>
+
+  <!-- 5. 대본 -->
+  <div class="card hide" id="scriptcard">
+    <div class="row" style="justify-content:space-between;align-items:baseline">
+      <div class="ttl" style="margin:0">대본 <span class="mono"
+        style="text-transform:none" id="scnt"></span></div>
+      <div class="row" style="gap:6px">
+        <button class="sm" id="tabSeg">문장</button>
+        <button class="sm" id="tabSub">자막</button>
+        <button class="sm" id="tabSrt">SRT</button>
+      </div>
+    </div>
+    <div style="height:12px"></div>
+    <div class="tr" id="tr"></div>
+    <pre class="tr mono hide" id="srtbox" style="font-size:12px;color:var(--dim);
+      white-space:pre-wrap;line-height:1.5"></pre>
+  </div>
+
+  <div class="card err hide" id="errbox"></div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const US = 1e6;
+let JOB = null, DUR = 0, KEEPS = [], PROTECT = [], pendingIn = null, LASTDRAFT = null;
+
+const fmt = us => {
+  const t = Math.max(0, us / US), m = Math.floor(t / 60), s = t - m * 60;
+  return `${String(m).padStart(2,'0')}:${s.toFixed(2).padStart(5,'0')}`;
+};
+const fmtS = sec => fmt(sec * US);
+
+/* ── env ── */
+fetch('/api/env').then(r => r.json()).then(e => {
+  const chips = [
+    `<span class="chip">모델 <b>${e.model}</b></span>`,
+    `<span class="chip">연산 <b>${e.device}</b></span>`,
+    `<span class="chip ${e.draft_root_ok ? '' : 'bad'}">드래프트 <b>${
+      e.draft_root_ok ? e.draft_root.replace(/^.*[\\/]/, '…/' ) : '못 찾음'}</b></span>`,
+  ];
+  $('#env').innerHTML = chips.join('');
+  $('#env').title = e.draft_root;
+  STEPS = e.steps; renderSteps();
+  PRESETS = e.presets || [];
+  // 서버가 정해 준 기본 용도를 쓴다 (실행 bat 의 CAPCUT_PRESET).
+  // 강의만 편집하는 PC 는 vod 로 미리 골라진 채 열린다.
+  PRESET = e.preset || (PRESETS[0] || {}).key || 'youtube';
+  renderPresets();
+  (e.decks || []).forEach(d => {
+    const o = document.createElement('option');
+    o.value = d.key; o.textContent = d.label;
+    $('#slide_deck').appendChild(o);
+  });
+});
+
+
+/* ── 장표 다시 깔기 ── */
+$('#rlist').addEventListener('click', loadDrafts);
+async function loadDrafts(){
+  $('#rnote').textContent = '읽는 중…';
+  const r = await fetch('/api/drafts').then(x => x.json());
+  if (r.capcut) {
+    $('#rnote').innerHTML = '<b style="color:#e66">캡컷이 켜져 있습니다.</b> 완전히 종료한 뒤 다시 눌러 주세요.';
+    $('#rtable').innerHTML = ''; return;
+  }
+  $('#rnote').textContent = r.drafts.length + '개';
+  $('#rtable').innerHTML = r.drafts.slice(0, 15).map(function(d){
+    var meta = '컷 ' + (d.cuts || '-') + ' · 장표 ' + (d.slides || '-') +
+               ' · 자막 ' + (d.subs || '-') +
+               (d.dur ? ' · ' + (d.dur / 60).toFixed(2) + '분' : '');
+    return '<div class="row" style="justify-content:space-between;padding:4px 0;border-bottom:1px solid #2a2a2a">' +
+           '<span><b>' + d.name + '</b> <span class="muted">' + meta + '</span></span>' +
+           '<button data-relay="' + encodeURIComponent(d.name) + '">다시 깔기</button></div>';
+  }).join('');
+  $('#rtable').querySelectorAll('[data-relay]').forEach(function(b){
+    b.addEventListener('click', function(){ relay(decodeURIComponent(b.dataset.relay)); });
+  });
+}
+function relay(name){
+  var msg = '「' + name + '」 의 장표를 다시 깝니다.\n'
+          + '원본은 그대로 두고 새로 만듭니다. 몇 분 걸립니다.';
+  if (!confirm(msg)) return;
+  var log = $('#rlog');
+  log.style.display = 'block'; log.textContent = '';
+  $('#rtable').querySelectorAll('button').forEach(function(b){ b.disabled = true; });
+  var es = new EventSource('/api/relay/stream?draft=' + encodeURIComponent(name));
+  function unlock(){ $('#rtable').querySelectorAll('button').forEach(function(b){ b.disabled = false; }); }
+  es.onmessage = function(ev){
+    var d = JSON.parse(ev.data);
+    if (d.type === 'line'){ log.textContent += d.text + '\n'; log.scrollTop = log.scrollHeight; }
+    else if (d.type === 'done'){
+      es.close();
+      log.textContent += d.ok ? '\n끝났습니다. 캡컷을 껐다 켜면 목록에 뜹니다.'
+                              : '\n실패했습니다. 위 내용을 알려주세요.';
+      unlock();
+    }
+  };
+  es.onerror = function(){ es.close(); unlock(); };
+}
+
+/* ── 장표 ── */
+$('#slides').addEventListener('change', () => {
+  $('#deckrow').style.display = $('#slides').checked ? 'flex' : 'none';
+});
+
+/* ── 용도 (배속이 여기서 갈린다) ── */
+let PRESETS = [], PRESET = 'youtube';
+function renderPresets(){
+  $('#presets').innerHTML = PRESETS.map(p =>
+    `<button class="${p.key === PRESET ? 'pri' : ''}" data-preset="${p.key}">
+       ${p.label} · ${p.speed}×</button>`).join('');
+  const cur = PRESETS.find(p => p.key === PRESET);
+  $('#presetnote').textContent = cur ? cur.note : '';
+  // 유료 본편(VOD)은 장표를 얹는 게 기본이다
+  // 용도를 고르면 그 용도의 기본 구성으로 맞춘다.
+  //   VOD 강의 = 장표 O · 까만 비트 카드 X
+  //   유튜브    = 장표 X · 비트 카드 O
+  //   VOD 강의 = 장표 O · 비트 카드 X · 효과음 X
+  //   유튜브    = 장표 X · 비트 카드 O · 효과음 O (2026-09-16 대표님: 기본으로 켠다)
+  var vod = PRESET === 'vod';
+  $('#slides').checked = vod;
+  $('#beats').checked = !vod;
+  $('#sfx').checked = !vod;
+  $('#deckrow').style.display = vod ? 'flex' : 'none';
+}
+$('#presets').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  PRESET = b.dataset.preset; renderPresets();
+});
+
+/* ── stepper ── */
+let STEPS = [], STATE = {};
+function renderSteps(){
+  $('#steps').innerHTML = STEPS.map(s => {
+    const st = STATE[s.key] || {};
+    const cls = st.state === 'running' ? 'run' : st.state === 'done' ? 'ok'
+      : st.state === 'skipped' ? 'skip' : st.state === 'error' ? 'err' : '';
+    const on = st.state ? ' on' : '';
+    return `<div class="step${on}"><span class="dot ${cls}"></span>
+      <span class="lb">${s.label}</span>
+      <span class="dt">${st.detail || ''}</span>
+      <span class="ms">${st.elapsed != null ? st.elapsed.toFixed(1) + 's' : ''}</span></div>`;
+  }).join('');
+}
+
+
+/* ── 여러 개 한 번에 ── */
+//
+// 대본 추출은 서버가 알아서 한 번에 하나씩만 돌린다(동시에 하면 엔진이 죽는다).
+// 그래서 여기서는 전부 한꺼번에 걸어도 안전하다 — 무음 분석·장표 굽기 같은
+// 나머지 일은 겹쳐서 돌아가므로 하나씩 하는 것보다 조금 더 빠르다.
+let QUEUE = [];
+
+function queueFiles(files){
+  QUEUE = files.map(function(f){ return {file:f, name:f.name, state:'대기', job:null, draft:''}; });
+  $('#queuebox').classList.remove('hide');
+  $('#setup').classList.remove('hide');
+  var pv = document.querySelector('#onefile');
+  if (pv) pv.classList.add('hide');          // 한 개짜리 미리보기는 감춘다
+  $('#go').textContent = files.length + '개 모두 만들기';
+  $('#drop').querySelector('.big').textContent = files.length + '개를 받았습니다';
+  $('#drop').querySelector('.small').textContent = '다시 놓으면 교체';
+  renderQ();
+}
+
+function renderQ(){
+  $('#qnote').textContent = QUEUE.filter(function(q){return q.state==='끝';}).length +
+                            ' / ' + QUEUE.length + ' 완료';
+  $('#qlist').innerHTML = QUEUE.map(function(q, i){
+    var col = q.state==='끝' ? 'var(--accent)' : (q.state.indexOf('실패')>=0 ? '#e66' : 'var(--faint)');
+    return '<div class="row" style="justify-content:space-between;padding:5px 0;border-bottom:1px solid #2a2a2a">' +
+           '<span>' + (i+1) + '. <b>' + q.name + '</b>' +
+           (q.draft ? ' <span class="muted">→ ' + q.draft + '</span>' : '') + '</span>' +
+           '<span style="color:' + col + '">' + q.state + '</span></div>';
+  }).join('');
+}
+
+$('#qclear').addEventListener('click', function(){
+  QUEUE = []; $('#queuebox').classList.add('hide');
+  $('#drop').querySelector('.big').textContent = '영상을 여기로 끌어다 놓으세요';
+});
+
+function startQueue(){
+  if (!QUEUE.length) return;
+  $('#qgo').disabled = true; $('#go').disabled = true;
+  var opt = opts();
+  QUEUE.forEach(function(q){ runOne(q, opt); });
+}
+$('#qgo').addEventListener('click', startQueue);
+
+function runOne(q, opt){
+  q.state = '올리는 중'; renderQ();
+  var fd = new FormData(); fd.append('file', q.file);
+  fetch('/api/upload', {method:'POST', body:fd})
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      q.job = d.job_id; q.state = '차례 기다림'; renderQ();
+      var o = Object.assign({}, opt, {draft_name:''});
+      var es = new EventSource('/api/jobs/' + q.job + '/stream?opts=' +
+                               encodeURIComponent(JSON.stringify(o)));
+      es.onmessage = function(ev){
+        var m = JSON.parse(ev.data);
+        if (m.type === 'step' && m.state === 'running') { q.state = m.label; renderQ(); }
+        else if (m.type === 'error') { q.state = '실패'; renderQ(); }
+        else if (m.type === 'result') { q.draft = (m.draft && m.draft.name) || ''; }
+        else if (m.type === 'end') {
+          es.close();
+          if (q.state !== '실패') q.state = '끝';
+          renderQ();
+          if (QUEUE.every(function(x){ return x.state==='끝' || x.state==='실패'; })) {
+            $('#qgo').disabled = false; $('#go').disabled = false;
+          }
+        }
+      };
+      es.onerror = function(){ es.close(); if (q.state!=='끝'){ q.state='실패'; renderQ(); } };
+    })
+    .catch(function(){ q.state = '실패'; renderQ(); });
+}
+/* ── upload ── */
+const drop = $('#drop');
+['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => {
+  e.preventDefault(); drop.classList.add('hot');
+}));
+['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => {
+  e.preventDefault(); if (ev === 'dragleave') drop.classList.remove('hot');
+}));
+drop.addEventListener('drop', e => {
+  drop.classList.remove('hot');
+  const fs = [...e.dataTransfer.files];
+  if (fs.length > 1) queueFiles(fs);
+  else if (fs[0]) upload(fs[0]);
+});
+drop.addEventListener('click', () => $('#file').click());
+$('#file').addEventListener('change', e => {
+  const fs = [...e.target.files];
+  if (fs.length > 1) queueFiles(fs); else if (fs[0]) upload(fs[0]);
+});
+
+function upload(f){
+  showErr(null);
+  const bar = $('#upbar'); bar.classList.remove('hide');
+  const fill = bar.querySelector('i');
+  const fd = new FormData(); fd.append('file', f);
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', '/api/upload');
+  xhr.upload.onprogress = e => {
+    if (e.lengthComputable) fill.style.width = (e.loaded / e.total * 100) + '%';
+  };
+  xhr.onload = () => {
+    bar.classList.add('hide'); fill.style.width = '0';
+    if (xhr.status !== 200){ showErr('업로드 실패: ' + xhr.responseText); return; }
+    const d = JSON.parse(xhr.responseText);
+    JOB = d.job_id;
+    drop.querySelector('.big').textContent = d.name;
+    drop.querySelector('.small').textContent =
+      (d.size / 1048576).toFixed(1) + ' MB · 다시 놓으면 교체';
+    $('#setup').classList.remove('hide');
+    const v = $('#vid');
+    v.src = `/api/jobs/${JOB}/video`;
+    PROTECT = []; KEEPS = []; renderMarks(); renderTL0();
+    $('#res').classList.add('hide'); $('#scriptcard').classList.add('hide');
+    v.onloadedmetadata = () => {
+      DUR = v.duration;
+      $('#vmeta').textContent = `${v.videoWidth}×${v.videoHeight} · ${fmtS(DUR)}`;
+      renderTL0();
+    };
+  };
+  xhr.onerror = () => { bar.classList.add('hide'); showErr('업로드 중 연결이 끊겼습니다'); };
+  xhr.send(fd);
+}
+
+/* ── 보존 구간 마킹 ── */
+const vid = $('#vid');
+document.addEventListener('keydown', e => {
+  if (!JOB || /^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return;
+  if (e.key === '['){ pendingIn = vid.currentTime; renderMarks(); e.preventDefault(); }
+  else if (e.key === ']'){
+    if (pendingIn == null) return;
+    const a = Math.min(pendingIn, vid.currentTime), b = Math.max(pendingIn, vid.currentTime);
+    if (b - a > 0.05) PROTECT.push([a, b]);
+    pendingIn = null; mergeProtect(); renderMarks(); renderTL0(); e.preventDefault();
+  }
+  else if (e.code === 'Space'){ vid.paused ? vid.play() : vid.pause(); e.preventDefault(); }
+  else if (e.key === 'ArrowLeft'){ vid.currentTime = Math.max(0, vid.currentTime - 1); e.preventDefault(); }
+  else if (e.key === 'ArrowRight'){ vid.currentTime = Math.min(DUR, vid.currentTime + 1); e.preventDefault(); }
+});
+function mergeProtect(){
+  PROTECT.sort((x, y) => x[0] - y[0]);
+  const out = [];
+  for (const p of PROTECT){
+    if (out.length && p[0] <= out[out.length-1][1]) out[out.length-1][1] = Math.max(out[out.length-1][1], p[1]);
+    else out.push([p[0], p[1]]);
+  }
+  PROTECT = out;
+}
+function renderMarks(){
+  const rows = PROTECT.map((p, i) =>
+    `<div class="mkrow"><span class="t">${fmtS(p[0])} → ${fmtS(p[1])}</span>
+     <button class="sm" data-seek="${p[0]}">이동</button>
+     <button class="sm" data-del="${i}">삭제</button></div>`).join('');
+  const pend = pendingIn != null
+    ? `<div class="mkrow"><span class="t ok">${fmtS(pendingIn)} → …</span>
+       <button class="sm" data-cancel="1">취소</button></div>` : '';
+  $('#marks').innerHTML = (rows + pend) ||
+    '<div class="muted" style="padding-top:8px">보존 구간 없음</div>';
+}
+$('#marks').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.del != null){ PROTECT.splice(+b.dataset.del, 1); renderMarks(); renderTL0(); }
+  else if (b.dataset.seek != null){ vid.currentTime = +b.dataset.seek; }
+  else if (b.dataset.cancel){ pendingIn = null; renderMarks(); }
+});
+vid.addEventListener('timeupdate', () => {
+  if (DUR) $('#ph0').style.left = (vid.currentTime / DUR * 100) + '%';
+});
+$('#tl0').addEventListener('click', e => {
+  if (!DUR) return;
+  const r = e.currentTarget.getBoundingClientRect();
+  vid.currentTime = (e.clientX - r.left) / r.width * DUR;
+});
+function renderTL0(){
+  const el = $('#tl0');
+  el.querySelectorAll('.prot,.mk').forEach(n => n.remove());
+  if (!DUR) return;
+  PROTECT.forEach(p => {
+    const d = document.createElement('div'); d.className = 'prot';
+    d.style.left = (p[0] / DUR * 100) + '%';
+    d.style.width = ((p[1] - p[0]) / DUR * 100) + '%';
+    el.appendChild(d);
+  });
+  if (pendingIn != null){
+    const d = document.createElement('div'); d.className = 'mk';
+    d.style.left = (pendingIn / DUR * 100) + '%'; el.appendChild(d);
+  }
+}
+
+/* ── 실행 ── */
+function opts(){
+  const num = id => parseFloat($('#' + id).value);
+  const chk = id => $('#' + id).checked;
+  return {
+    noise_db: num('noise_db'), auto_noise: chk('auto_noise'), min_silence_s: num('min_silence_s'),
+    pad_s: num('pad_s'), min_keep_s: num('min_keep_s'),
+    ng_similarity: num('ng_similarity'),
+    subtitle_max_chars: num('subtitle_max_chars'),
+    subtitle_size: num('subtitle_size'), subtitle_y: num('subtitle_y'),
+    asr_enabled: chk('asr_enabled'), filler_enabled: chk('filler_enabled'),
+    ng_enabled: chk('ng_enabled'), subtitle_enabled: chk('subtitle_enabled'),
+    subtitle_fill_gaps: chk('subtitle_fill_gaps'), use_cache: chk('use_cache'),
+    use_profile: chk('use_profile'), auto_zoom: chk('auto_zoom'),
+    auto_emphasis: chk('auto_emphasis'), sfx: chk('sfx'),
+    slides: chk('slides'), beats: chk('beats'),
+    slide_deck: $('#slide_deck').value,
+    preset: PRESET,
+    draft_name: $('#draft_name').value.trim(),
+    protect: PROTECT,
+  };
+}
+
+let es = null;
+function start(){
+  // 여러 개를 놓으신 경우엔 대기열을 돌린다.
+  //
+  // 이 확인은 **`if (!JOB) return;` 보다 먼저** 와야 한다. JOB 은 한 개짜리
+  // 업로드에서만 채워지므로, 뒤에 두면 여기서 바로 빠져나가 버린다 —
+  // 초록 버튼을 눌러도 아무 일도 안 나던 게 이 때문이었다.
+  if (QUEUE.length && !JOB){ startQueue(); return; }
+  if (!JOB) return;
+  showErr(null);
+  STATE = {}; renderSteps();
+  $('#prog').classList.remove('hide');
+  $('#res').classList.add('hide'); $('#scriptcard').classList.add('hide');
+  $('#go').disabled = true; $('#rerun').disabled = true;
+  if (es) es.close();
+  es = new EventSource(`/api/jobs/${JOB}/stream?opts=` +
+        encodeURIComponent(JSON.stringify(opts())));
+  es.onmessage = ev => handle(JSON.parse(ev.data));
+  es.onerror = () => { es.close(); $('#go').disabled = false; $('#rerun').disabled = false; };
+}
+$('#go').addEventListener('click', start);
+$('#rerun').addEventListener('click', start);
+
+function handle(m){
+  if (m.type === 'step'){
+    STATE[m.step] = Object.assign(STATE[m.step] || {}, m);
+    renderSteps();
+  } else if (m.type === 'result'){
+    showResult(m);
+  } else if (m.type === 'error'){
+    showErr(m.message);
+    const k = STEPS.find(s => (STATE[s.key] || {}).state === 'running');
+    if (k){ STATE[k.key].state = 'error'; renderSteps(); }
+  } else if (m.type === 'end'){
+    if (es) es.close();
+    $('#go').disabled = false; $('#rerun').disabled = false;
+  }
+}
+
+function showResult(m){
+  const s = m.stats;
+  KEEPS = m.keeps || [];
+  LASTDRAFT = m.draft;
+  $('#stats').innerHTML = [
+    ['원본 길이', fmt(s.original_us)],
+    ['결과 길이', fmt(s.total_us), true],
+    ['줄어든 비율', s.removed_pct + '<small>%</small>'],
+    ['세그먼트', s.segments + '<small>개</small>'],
+    ['자막', s.subtitles + '<small>개</small>'],
+    ['잔말 / NG', s.filler + ' <small>/</small> ' + s.ng],
+  ].map(([k, v, acc]) =>
+    `<div class="stat"><div class="k">${k}</div>
+     <div class="v${acc ? ' acc' : ''}">${v}</div></div>`).join('');
+
+  const el = $('#tl1'); el.innerHTML = '';
+  const tot = s.original_us || 1;
+  KEEPS.forEach(([a, b]) => {
+    const d = document.createElement('div'); d.className = 'keep';
+    d.style.left = (a / tot * 100) + '%'; d.style.width = ((b - a) / tot * 100) + '%';
+    el.appendChild(d);
+  });
+
+  $('#dname').textContent = m.draft ? m.draft.name : '드래프트 없음';
+  $('#openf').disabled = !m.draft;
+  $('#res').classList.remove('hide');
+
+  SUBS = m.subtitles || [];
+  SRT = m.srt || '';
+  if (m.transcript){ TRANS = m.transcript; renderTranscript(m.transcript); showTab('seg'); }
+}
+
+/* ── 대본 / 자막 / SRT 보기 ── */
+let SUBS = [], SRT = '', TRANS = null, TAB = 'seg';
+function showTab(which){
+  TAB = which;
+  const box = $('#srtbox'), tr = $('#tr');
+  [['seg','#tabSeg'],['sub','#tabSub'],['srt','#tabSrt']].forEach(([k, sel]) =>
+    $(sel).classList.toggle('pri', k === which));
+  if (which === 'srt'){
+    tr.classList.add('hide'); box.classList.remove('hide');
+    box.textContent = SRT || '(대본 없음)';
+    return;
+  }
+  box.classList.add('hide'); tr.classList.remove('hide');
+  if (which === 'sub'){
+    $('#tr').innerHTML = SUBS.map(([st, du, t]) =>
+      `<div class="tseg" data-t="-1"><span class="tm">${fmt(st)}</span>
+       <span class="tx">${esc(t)}</span>
+       <span class="tag">${t.length}자</span></div>`).join('')
+      || '<div class="muted">자막 없음</div>';
+  } else if (TRANS){
+    renderTranscript(TRANS);
+  }
+}
+$('#tabSeg').addEventListener('click', () => showTab('seg'));
+$('#tabSub').addEventListener('click', () => showTab('sub'));
+$('#tabSrt').addEventListener('click', () => showTab('srt'));
+
+function renderTranscript(tr){
+  const segs = tr.segs || [];
+  const cut = segs.filter(s => s.kind !== 'speech').length;
+  $('#scnt').textContent = `${segs.length}문장 · ${cut}개 컷`;
+  $('#tr').innerHTML = segs.map(s => {
+    const isCut = s.kind !== 'speech';
+    // 실제로 자막에 나갈 문장을 보여준다. 원문과 다르면(가장자리 잔말을
+    // 떼어낸 경우) 표시해줘야 사용자가 뭐가 빠졌는지 안다.
+    const eff = s.eff_text || s.text;
+    const trimmed = !isCut && eff !== s.text.trim();
+    const tag = isCut
+      ? `<span class="tag ${s.kind === 'ng' ? 'ng' : ''}">${esc(s.reason || s.kind)}</span>`
+      : (trimmed ? '<span class="tag">잔말 제거</span>' : '');
+    return `<div class="tseg ${isCut ? 'cut' : ''}" data-t="${s.start / US}">
+      <span class="tm">${fmt(s.start)}</span>
+      <span class="tx">${esc(isCut ? s.text : eff)}</span>${tag}</div>`;
+  }).join('') || '<div class="muted">인식된 말이 없습니다.</div>';
+  $('#scriptcard').classList.remove('hide');
+}
+$('#tr').addEventListener('click', e => {
+  const r = e.target.closest('.tseg'); if (!r) return;
+  const t = +r.dataset.t;
+  if (t < 0) return;   // 자막 탭은 타임라인 좌표라 원본으로 이동할 수 없다
+  vid.currentTime = t; vid.scrollIntoView({behavior:'smooth', block:'center'});
+});
+
+$('#openf').addEventListener('click', () => {
+  if (!LASTDRAFT) return;
+  fetch('/api/open', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({folder: LASTDRAFT.folder})});
+});
+
+const esc = t => t.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+function showErr(msg){
+  const b = $('#errbox');
+  if (!msg){ b.classList.add('hide'); return; }
+  b.textContent = msg; b.classList.remove('hide');
+}
+</script>
+</body>
+</html>
