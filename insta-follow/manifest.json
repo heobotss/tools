@@ -1,0 +1,19 @@
+{
+  "app": "insta-follow",
+  "version": "20261022-1",
+  "notes": "엑셀에 열려 있어도 한국어로 안내하고 멈춤 · 이제부터 자동 업데이트",
+  "date": "2026-10-22 11:29",
+  "files": {
+    "check.py": "672b08bb4b01a5317aeed792a7d71ec330dcf7fdfcd3727126d6367da5613b99",
+    "follow_bot.py": "d927464125fd98fb8741a2233d3fa8e21c005f06414f3ce2149ef376d9edef4c",
+    "queue.py": "dcfe9fa9eaf5488346464e5bb2eea52f6c716bc2c7edd349043aa955bae2abae",
+    "unfollow_bot.py": "89e572d80de51aa78cf312ff07164856807510626afe95490fe864fff8934968",
+    "safe_file.py": "897c0ea7c27b3cc4757a0cda215507a06f13984759c65e7bb374320cf4b085c2",
+    "updater.py": "2bfc489ff9a1b0f058ca5641485592acaef70207980e082060827c835d2c5835",
+    "_update.json": "4a516d6927017c8ce0212b3f8d0368777a359340dc2f58113b6d66e1b6d3e0cf",
+    "시작.bat": "d03e0ba1044fced0609022047365d37b2bc37c031d86e84446a48f0c0a02e8dc",
+    "설치.bat": "2fbb144b98863ca1e2b767f9a8c8e8c664f92dbf3669f8abfe65a5567665333f",
+    "★ 먼저 읽어주세요.txt": "fc21424e2bd7ec86eff1b1600a54351e74606c652ce92fc68ef6f9c9aed7a662",
+    "사용법.md": "f007c821be12c0e6e1fb64a9f3fe6d1eb33780605024a47c6c599f0b69587987"
+  }
+}
