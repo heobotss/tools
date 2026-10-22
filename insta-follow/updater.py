@@ -64,6 +64,10 @@ def local_version():
 def main(argv):
     install = "--install" in argv
     check_only = "--check" in argv
+    # 대표님 PC 의 원본·배포판 폴더(_publish.json 이 있는 곳)에서는 절대 스스로 바꾸지 않는다 —
+    # 고치는 중인 파일을 인터넷의 옛 버전이 덮어쓰면 안 된다. _publish.json 은 배포 목록에 없다.
+    if os.path.exists(os.path.join(HERE, "_publish.json")):
+        return 0
     try:
         with open(CONF, encoding="utf-8") as f:
             conf = json.load(f)
