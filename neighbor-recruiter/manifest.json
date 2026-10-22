@@ -1,0 +1,22 @@
+{
+  "app": "neighbor-recruiter",
+  "version": "20261022-1",
+  "notes": "자동 업데이트 시작 · 이웃그룹을 계정별로 저장(덮어써도 안 지워짐)",
+  "date": "2026-10-22 11:47",
+  "files": {
+    "공용.py": "8e7f1c20304cf778a0f942913adfa131dee0a3b5f00b9d28b0e7a259c46bcc1c",
+    "자동운행.py": "4e20ef8426c894075e9098c7a1069e467eee24e0f7a82d519291ac661296b679",
+    "후보뽑기.py": "14c8c406ac7aff10f902617236673d5b41c22cacaeeeb36f6eca43cd646c2347",
+    "신청실행.py": "4e41f05ec5837ae850d6b3cd0f03a014002261e813799510785985e09cd1019d",
+    "신청정리.py": "29e47c169bb03e11cfe39b8a3b7eb99aeae7ed3c5ae72c873cef00d6125a6264",
+    "로그인.py": "ce20182ba91d21dd1af111c9360525b80064ebdc316c70d8bd7a2be397041b75",
+    "run_auto.py": "b704ea23463a26183b38da78e82f6bcc7c08c16328c6dfe8877b41194ed6bddc",
+    "그룹만들기.py": "8ecf14dddabdef0e859f0456a7655600e97390b026fd88dd4e5a4d1c171ce989",
+    "1_처음설치.bat": "575b6fd16578c937a508625ecd00713e03b79aa9a669f2148406154fe46b467a",
+    "2_로그인.bat": "91e78f75a13d7d76469418e6b9a201c94742049fba0b57b170d8ea2b49eae775",
+    "3_매일실행.bat": "96ae9325c623371f0bc91599e42f28fba260ef9ba9aa899348edb6a34899fccc",
+    "사용 안내.txt": "2f4aa5529fe0ced20cd94586b1bfb32503ae72c654ed0d6a8b78bb5a11b1d5c6",
+    "updater.py": "c8ddd8e20303cb2e61fdc773ed7ce81e30baa8a3f3f72bfe16a1526b391d1f30",
+    "_update.json": "296a32d55fefece0762cf53a643caf773edcbabf877bccbe1e112b5d62119e76"
+  }
+}
