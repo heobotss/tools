@@ -8,4 +8,3 @@
 |---|---|
 | insta-follow | 인스타 팔로우 관리 (트레이너용) |
 | neighbor-recruiter | 이웃모집기 (트레이너용) |
-| capcut-staff | 캡컷 에이전트 (VOD 편집 직원용) |
