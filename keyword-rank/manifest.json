@@ -1,0 +1,14 @@
+{
+  "app": "keyword-rank",
+  "version": "20261027-1",
+  "notes": "첫 자동 업데이트판 — 지도가 늦게 뜨면 「이탈」 대신 다시 재고 「확인못함」, 표 머리 센터 이름을 설정에서",
+  "date": "2026-10-27 13:10",
+  "files": {
+    "순위추적.py": "018d87a8c342c3b8647d92c2c3ce8d76deab181bff0b557e3139c769936d9ae0",
+    "설치.bat": "493b851f355b0c8e5da2ec7370246634e7d1b656bb75164e26c8c380779d7c28",
+    "실행.bat": "8393e874be1919b74a8da9f168977194baae8d71f1996ad52246bddf4a3246aa",
+    "★ 먼저 읽어주세요.txt": "24e9d7f7d68ffdb20c7eff509eef2e9ee9e61a8530805a5f3b2441fcb83dac1c",
+    "updater.py": "c8ddd8e20303cb2e61fdc773ed7ce81e30baa8a3f3f72bfe16a1526b391d1f30",
+    "_update.json": "63c0a57cfbb3107cd98a5e762765e5f8a7fbe18e4beddaae622ecdef165cf2bd"
+  }
+}
