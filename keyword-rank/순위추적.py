@@ -239,6 +239,10 @@ def collect_serp(keywords, page):
             entry["places"], err = read_places(page, kw)
             if err:
                 entry["errors"].append(err)
+            # 그때 읽은 지도 주소(지도 중심·검색어가 들어 있다)를 남긴다 — 이상한 순위가 나오면
+            # 「그때 무슨 목록을 받았나」를 나중에 확인할 수 있게 (2026-10-28, 원주헬스PT 1위 오판 조사)
+            fr = next((f for f in page.frames if "pcmap.place.naver.com" in f.url), None)
+            entry["place_frame"] = fr.url[:300] if fr else ""
         except Exception as e:
             entry["errors"].append(f"플레이스 {type(e).__name__}: {e}")
 
@@ -314,7 +318,14 @@ def analyze(kw, entry, volumes, blog_cfg, cache, stats):
            "플레이스": None, "플레이스명": "", "오류": entry["errors"],
            # 플레이스 '측정 실패'(캡차·지도 로딩 오류)와 '진짜 순위권 밖'을 구분하는 재료.
            # 실패면 플레이스=None 이 "권외"가 아니므로, 다음 주 비교에서 신규/이탈로 단정하면 안 된다.
-           "플레이스오류": any("플레이스" in e for e in entry["errors"])}
+           "플레이스오류": any("플레이스" in e for e in entry["errors"]),
+           # ⚠ 2026-10-28 대표님 지적 — 원주헬스PT 가 몇 주째 1위로 적혔는데 폰에선 10위였다.
+           #   다시 재면 지도 위치·줌·키워드 순서를 어떻게 바꿔도 10위였고, 그때 받은 목록이
+           #   안 남아 있어 원인을 못 가렸다. 그래서 받은 순위표 앞 15곳과 지도 주소를 같이 남긴다.
+           #   다음에 이상한 순위가 보이면 기록/날짜.json 의 이 칸을 열어 보면 된다.
+           "플레이스상위": [[i + 1, p.get("id", ""), p.get("name", "")]
+                         for i, p in enumerate(entry.get("places", [])[:15])],
+           "플레이스주소": entry.get("place_frame", "")}
 
     for rank, post in enumerate(entry["blog_posts"], 1):
         bid = post["blog"].lower()
