@@ -39,11 +39,17 @@ echo.
 echo   -- 팔로우 --
 echo    5.  팔로우 시작            ★ 후보도 알아서 모읍니다
 echo    6.  팔로우 - 판단만 보기
-echo    7.  후보만 미리 모으기      (안 해도 됩니다)
+echo    7.  후보만 미리 모으기      (안 해도 됩니다 - 비슷한 계정)
 echo.
 echo   -- 그 외 --
 echo    8.  진행 현황 보기
 echo    9.  2단계 언팔 (보류한 트레이너 정리)
+echo.
+echo   -- 원주 잠재고객 (새로 생김) --
+echo   10.  원주 고객 팔로우      ★ 하루 한 번 누르면 됩니다
+echo   11.  원주 고객 - 판단만 보기
+echo   12.  원주 고객 현황
+echo.
 echo    0.  종료
 echo.
 echo ============================================================
@@ -59,6 +65,9 @@ if "!sel!"=="6" goto FDRY
 if "!sel!"=="7" goto FCOLLECT
 if "!sel!"=="8" goto STAT
 if "!sel!"=="9" goto PHASE2
+if "!sel!"=="10" goto LRUN
+if "!sel!"=="11" goto LDRY
+if "!sel!"=="12" goto LSTAT
 if "!sel!"=="0" goto BYE
 goto MENU
 
@@ -114,7 +123,7 @@ echo ============================================================
 echo   팔로우 시작 - 실제로 팔로우합니다
 echo ============================================================
 echo.
-echo   후보가 모자라면 알아서 모은 뒤 이어서 팔로우합니다.
+echo   후보가 모자라면 트레이너의 「비슷한 계정」에서 알아서 모은 뒤 이어서 팔로우합니다.
 echo   트레이너 계정만 팔로우하고, 아닌 계정은 건너뜁니다.
 echo.
 echo   ※ 언팔과 같은 날 많이 돌리지 마세요.
@@ -139,7 +148,7 @@ goto DONE
 
 :FCOLLECT
 cls
-echo [ 후보만 미리 모으기 ] 해시태그에서 트레이너 계정을 수집만 합니다.
+echo [ 후보만 미리 모으기 ] 트레이너의 「비슷한 계정」에서 후보를 모으기만 합니다.
 echo 팔로우는 하지 않습니다. 5번이 알아서 모으므로 굳이 안 해도 됩니다.
 echo.
 python follow_bot.py --collect
@@ -152,6 +161,9 @@ python queue.py stat
 echo.
 echo [ 팔로우 현황 ]
 python follow_bot.py --stat
+echo.
+echo [ 원주 고객 현황 ]
+python local_follow.py --stat
 goto DONE
 
 :PHASE2
@@ -173,6 +185,40 @@ set /p "ok=입력: "
 if not "!ok!"=="2단계실행" goto MENU
 echo.
 python unfollow_bot.py --phase 2 --confirm-phase2
+goto DONE
+
+:LRUN
+cls
+echo ============================================================
+echo   원주 잠재고객 팔로우 - 오늘 몫
+echo ============================================================
+echo.
+echo   원주 가게 계정의 최근 팔로워 중 진짜 지역 사람만 팔로우합니다.
+echo   3주 지나도 맞팔 안 한 사람은 조금씩 팔로우를 취소합니다.
+echo   인스타가 막으면 그 자리에서 멈추고 알려 드립니다.
+echo.
+echo   ※ 언팔·팔로우(4번·5번)와 동시에 돌리지 마세요.
+echo.
+set "ok="
+set /p "ok=시작하려면 y 를 누르고 Enter: "
+if /i not "!ok!"=="y" goto MENU
+echo.
+python local_follow.py
+goto DONE
+
+:LDRY
+cls
+echo [ 원주 고객 - 판단만 보기 ] 실제로 누르지 않습니다.
+echo.
+set "n="
+set /p "n=몇 명까지 볼까요? (그냥 Enter 누르면 10): "
+call :NUMCHECK "!n!" 10
+python local_follow.py --dry-run --limit !num!
+goto DONE
+
+:LSTAT
+cls
+python local_follow.py --stat
 goto DONE
 
 :NUMCHECK

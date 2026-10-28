@@ -62,10 +62,13 @@ def load_config():
     cfg = {"시간당_최대": 20, "하루_최대": 150, "대기_최소": 15, "대기_최대": 35,
            "연속실패_한도": 3, "큰계정_기준": 50000, "브라우저": "chrome",
            "팔로우_하루_최대": 100, "팔로우_대기_최소": 25, "팔로우_대기_최대": 45,
-           "수집_목표": 300, "최소_팔로워": 50,
-           "제외계정": set(), "트레이너단어": [], "공부단어": [], "해시태그": []}
+           "수집_목표": 300, "최소_팔로워": 50, "재시도_한도": 3, "씨앗_한번에": 15,
+           "지역_팔로우_하루": 20, "지역_언팔_하루": 20, "지역_유예_일수": 21,
+           "지역_대기_최소": 25, "지역_대기_최대": 90, "지역_후보_최소재고": 40,
+           "제외계정": set(), "트레이너단어": [], "공부단어": [], "해시태그": [],
+           "씨앗계정": [], "지역소스": []}
     if not os.path.exists(CONF):
-        return cfg
+        return _fill_words(cfg)
 
     section = None
     # utf-8-sig: 메모장으로 저장하면 BOM이 붙는데, 그래도 읽히도록
@@ -95,6 +98,31 @@ def load_config():
                 cfg[section].append(line.lower())
             elif section == "해시태그":
                 cfg["해시태그"].append(line.lstrip("#"))
+            elif section in ("씨앗계정", "지역소스"):
+                cfg[section].append(line.lower().lstrip("@"))
+    return _fill_words(cfg)
+
+
+# 설정.txt 의 단어 목록이 비면 트레이너를 못 알아봐 언팔해 버린다.
+# 그래서 비어 있으면 아래 기본 단어로 채우고 알린다. (2026-10-28)
+DEFAULT_TRAINER_WORDS = [
+    "트레이너", "trainer", "퍼스널트레이닝", "퍼스널 트레이닝", "personal training",
+    "pt", "피티", "헬스장", "헬스클럽", "피트니스센터", "피트니스 센터", "휘트니스센터",
+    "필라테스", "pilates", "요가원", "요가강사", "크로스핏박스", "관장", "지도자",
+    "1:1 수업", "회원모집", "수업문의", "레슨문의"]
+DEFAULT_STUDY_WORDS = [
+    "박사", "교수", "석사", "학회", "협회", "연구소", "아카데미", "academy", "institute",
+    "university", "대학", "공식", "official", "ph.d", "phd", "dr.", "m.d", "물리치료",
+    "재활의학", "정형외과", "한의원", "병원", "클리닉", "clinic", "해부학", "anatomy",
+    "논문", "저널", "journal", "세미나", "강의", "lecture", "자격증"]
+
+
+def _fill_words(cfg):
+    for key, words in (("트레이너단어", DEFAULT_TRAINER_WORDS),
+                       ("공부단어", DEFAULT_STUDY_WORDS)):
+        if not cfg[key]:
+            cfg[key] = list(words)
+            print("[i] 설정.txt 의 [%s] 가 비어 있어 기본 단어 %d개로 판단합니다." % (key, len(words)))
     return cfg
 
 
@@ -195,10 +223,62 @@ def load_targets(cfg, phase=1):
                 if seen.get(r["아이디"].lower()) == "deferred_trainer"
                 and r["아이디"].lower() not in cfg["제외계정"]]
 
+    # 실패(시간 초과·화면 못 읽음 등)는 영영 빼지 않고 재시도_한도 번까지 다시 본다.
+    # (2026-10-28 직원 사례 — 실패한 계정이 남은 대상에서 영구히 빠져 숫자가 안 맞았다)
+    tries = fail_counts()
     return [r for r in q
             if int(r["순번"]) >= start
-            and r["아이디"].lower() not in seen
+            and (r["아이디"].lower() not in seen
+                 or (seen[r["아이디"].lower()] == "failed"
+                     and tries.get(r["아이디"].lower(), 0) < cfg["재시도_한도"]))
             and r["아이디"].lower() not in cfg["제외계정"]]
+
+
+def fail_counts():
+    """아이디(소문자) -> 실패 기록 수"""
+    out = {}
+    for r in read_log():
+        if r["결과"] == "failed":
+            k = r["아이디"].lower()
+            out[k] = out.get(k, 0) + 1
+    return out
+
+
+LABEL = {"unfollowed": "언팔 완료", "deferred_trainer": "트레이너라 보류 (9번 2단계 몫)",
+         "kept_study": "남김 · 공부용", "kept_big": "남김 · 큰 계정",
+         "notfound": "계정 없음", "already": "이미 언팔돼 있었음", "failed": "실패"}
+
+
+def show_breakdown(cfg):
+    """작업목록 전체가 지금 어디에 가 있는지 한눈에 보여 준다.
+
+    「언팔 대상 3067명인데 남은 대상 96명」처럼 숫자가 안 맞아 보이는 일을 막는다.
+    (보류·남김·없음도 「처리함」이라 남은 대상에서 빠진다)
+    """
+    with open(QUEUE, encoding="utf-8-sig") as f:
+        q = list(csv.DictReader(f))
+    ids = {r["아이디"].lower() for r in q}
+    latest = {k: v for k, v in last_results().items() if k in ids}
+    tries = fail_counts()
+    counts = {}
+    for v in latest.values():
+        counts[v] = counts.get(v, 0) + 1
+    start = get_start()
+    before_start = sum(1 for r in q if int(r["순번"]) < start and r["아이디"].lower() not in latest)
+    retry = sum(1 for k, v in latest.items() if v == "failed" and tries.get(k, 0) < cfg["재시도_한도"])
+    excluded = sum(1 for k in ids if k in cfg["제외계정"])
+    print("  작업목록 전체 %d명 중" % len(q))
+    for key in ("unfollowed", "deferred_trainer", "kept_study", "kept_big",
+                "notfound", "already", "failed"):
+        if counts.get(key):
+            extra = ""
+            if key == "failed" and retry:
+                extra = "  (그중 %d명은 다시 시도합니다)" % retry
+            print("     %-30s %5d%s" % (LABEL[key], counts[key], extra))
+    if before_start:
+        print("     %-30s %5d" % ("시작지점(%d번) 앞이라 건너뜀" % start, before_start))
+    if excluded:
+        print("     %-30s %5d" % ("제외계정", excluded))
 
 
 def today_count():
@@ -266,9 +346,7 @@ def judge(name, header_text, cfg, phase=1):
     판단은 '소개글과 이름'으로 한다. 첫 줄(아이디)은 빼고 본다.
     아이디에 gym이 들어갔다고 트레이너인 건 아니기 때문이다.
     """
-    lines = header_text.split("\n")
-    body = "\n".join(lines[1:]) if len(lines) > 1 else header_text
-    low = body.lower()
+    low = bio_text(header_text).lower()
 
     for word in cfg["공부단어"]:
         if hit(word, low):
@@ -306,6 +384,67 @@ def header_text(page):
         except Exception:
             pass
     return ""
+
+
+import re as _re
+
+# 헤더에서 소개글이 끝나는 줄 — 이 뒤는 버튼·하이라이트(「교육」「후기」 같은 이름)라 판단에 넣지 않는다.
+# (2026-10-28 실측: 로그인 화면 헤더 끝에 하이라이트 이름이 붙어, 「교육」이 공부단어로 잡힐 수 있었다)
+_STOP = _re.compile(r"팔로우합니다$|^팔로우$|^팔로잉$|^맞팔로우$|^요청됨$|^팔로우 요청됨$|"
+                    r"^메시지 보내기$|^프로필 편집$|^회원님을 위한 추천|^Followed by|"
+                    r"^Follow$|^Following$|^Follow Back$|^Requested$|^Message$|^Edit profile$|"
+                    r"^Suggested for you", _re.I)
+_COUNTS = ("게시물", "팔로워", "posts", "followers")
+
+
+def bio_text(header):
+    """헤더 글에서 아이디 줄을 빼고, 버튼·하이라이트가 나오기 전까지만 돌려준다."""
+    lines = [l.strip() for l in (header or "").split("\n")]
+    out = []
+    for i, l in enumerate(lines):
+        if i == 0:
+            continue
+        if _STOP.search(l):
+            break
+        if l in ("더 보기", "more", "...more"):
+            continue
+        out.append(l)
+    return "\n".join(out)
+
+
+def read_profile(page, wait_s=8):
+    """프로필 헤더를 다 뜰 때까지 기다려 읽는다 → ("ok", 글) / ("notfound", "") / ("unread", "").
+
+    2.5초 만에 읽으면 덜 뜬 화면을 읽을 수 있다. 덜 뜬 화면을 「트레이너 아님」「계정 없음」으로
+    영구 기록하던 문제를 막는다 — 못 읽었으면 「unread」로 돌려주고 나중에 다시 본다.
+    """
+    deadline = time.time() + wait_s
+    text = ""
+    while True:
+        text = header_text(page)
+        low = text.lower()
+        if text and any(c in low for c in _COUNTS):
+            break
+        try:
+            body = page.inner_text("body", timeout=2000)
+        except Exception:
+            body = ""
+        if "페이지를 사용할 수 없습니다" in body or "Sorry, this page" in body:
+            return "notfound", ""
+        if time.time() >= deadline:
+            return "unread", ""
+        page.wait_for_timeout(1000)
+    # 소개글이 「더 보기」로 접혀 있으면 펼쳐서 다시 읽는다 (판단 단어가 뒤에 있을 수 있다)
+    if "더 보기" in text:
+        try:
+            more = page.query_selector('header div[role="button"]:text-is("더 보기")')
+            if more and more.is_visible():
+                more.click()
+                page.wait_for_timeout(700)
+                text = header_text(page) or text
+        except Exception:
+            pass
+    return "ok", text
 
 
 def find_following_button(page):
@@ -517,6 +656,7 @@ def run(dry_run, limit, phase=1):
             print("    1단계를 먼저 끝내세요: python unfollow_bot.py")
         else:
             print("[i] 처리할 대상이 없습니다.")
+            show_breakdown(cfg)
             n_def = sum(1 for v in last_results().values() if v == "deferred_trainer")
             if n_def:
                 print("    1단계가 끝났습니다. 보류된 트레이너 계정 %d명이 있습니다." % n_def)
@@ -533,25 +673,36 @@ def run(dry_run, limit, phase=1):
     # 목표는 '실제 언팔 건수'다. 보류·남김이 섞이므로 방문해야 할 계정은 이보다 많다.
     goal = min(room_today, (limit if limit is not None else 10 ** 9))
 
-    print("=" * 52)
+    import rest_guard
+    print("=" * 56)
     print("  단계        : %d단계 %s" % (phase,
           "(일반 계정 정리 · 트레이너는 보류)" if phase == 1 else "(보류했던 트레이너 정리)"))
+    if phase == 1:
+        show_breakdown(cfg)
     print("  남은 대상   : %d 명" % len(targets))
     print("  오늘 언팔함 : %d 명 (하루 한도 %d · 실제 언팔 기준)"
           % (done_today, cfg["하루_최대"]))
     print("  이번 목표   : %d 명 언팔" % goal)
     print("  모드        : %s" % ("판단만 (실제로 안 누름)" if dry_run else "실제 언팔"))
-    print("=" * 52)
+    rest_guard.show_today_total()
+    print("=" * 56)
     print("")
+    if cfg["하루_최대"] > 150:
+        print("[참고] 하루 한도가 %d 입니다. 계정마다 버티는 양이 달라 막지는 않습니다." % cfg["하루_최대"])
+        print("       인스타가 막으면 그 자리에서 멈추고 알려 드립니다.\n")
 
     # 진행상황.csv 가 엑셀 등에 열려 있으면 브라우저를 띄우기 전에 알려 주고 멈춘다
     # (2026-10-22 실제 사례 — 열린 채로 돌리다 첫 기록에서 죽었다)
     if not dry_run:
         safe_file.check_writable(LOG)
+        if not rest_guard.ask_if_resting():
+            print("[i] 쉬는 기간이라 오늘은 하지 않습니다.")
+            return 0
 
     processed = 0   # 방문한 계정 수
     did = 0         # 실제로 언팔한 수 (하루 한도의 기준)
     fails = 0
+    ignored = 0     # 눌렀는데 그대로인 횟수 (인스타가 조용히 막는 신호)
     hour_mark = time.time()
     hour_count = 0
 
@@ -589,24 +740,33 @@ def run(dry_run, limit, phase=1):
 
                 # 로그아웃 상태로 계속 도는 걸 막는다
                 if not is_logged_in(ctx):
-                    print("\n[중단] 로그인이 풀렸습니다. 로그아웃 상태로는 언팔할 수 없습니다.")
-                    print("       python unfollow_bot.py --login  으로 다시 로그인하세요.")
+                    rest_guard.record_refusal("로그인이 풀림 (인스타가 로그아웃시킴)")
                     break
 
                 blocked = check_blocked(page, name)
                 if blocked:
-                    print("\n[중단] %s" % blocked)
-                    print("       여기서 멈춥니다. 한참 쉬었다가 다시 실행하세요.")
+                    rest_guard.record_refusal(blocked)
                     break
 
-                head = header_text(page)
+                st, head = read_profile(page)
 
-                if not head or "페이지를 사용할 수 없습니다" in head or "Sorry, this page" in head:
+                if st == "notfound" or "페이지를 사용할 수 없습니다" in head or "Sorry, this page" in head:
                     if not dry_run:
                         write_log(name, "notfound", "계정 없음/비활성")
                     print("%5s @%-24s  없음" % (seq, name))
                     processed += 1
                     fails = 0
+                    continue
+                if st == "unread":
+                    # 화면이 덜 떠서 못 읽었다 — 판단하지 않고 나중에 다시 본다
+                    if not dry_run:
+                        write_log(name, "failed", "소개글 못 읽음 (다음에 다시)")
+                    print("%5s @%-24s  못 읽음 (다음에 다시)" % (seq, name))
+                    processed += 1
+                    fails += 1
+                    if fails >= cfg["연속실패_한도"]:
+                        print("\n[중단] 프로필을 %d번 연속 못 읽었습니다. 인터넷이나 로그인을 확인하세요." % fails)
+                        break
                     continue
 
                 if already_unfollowed(page):
@@ -667,8 +827,22 @@ def run(dry_run, limit, phase=1):
                 blocked = check_blocked(page, name)
                 if blocked:
                     write_log(name, "failed", blocked)
-                    print("\n[중단] %s" % blocked)
+                    rest_guard.record_refusal(blocked)
                     break
+
+                # 눌렀는데도 「팔로잉」 그대로면 인스타가 조용히 거부한 것이다
+                if not already_unfollowed(page):
+                    page.wait_for_timeout(2000)
+                if not already_unfollowed(page):
+                    write_log(name, "failed", "눌렀는데 반영 안 됨")
+                    print("%5s @%-24s  실패 (눌렀는데 그대로)" % (seq, name))
+                    ignored += 1
+                    processed += 1
+                    if ignored >= 2:
+                        rest_guard.record_refusal("언팔을 눌러도 반영이 안 됨 %d번 (조용한 차단)" % ignored)
+                        break
+                    continue
+                ignored = 0
 
                 write_log(name, "unfollowed", reason)
                 print("%5s @%-24s  언팔 완료 (%s)" % (seq, name, reason))

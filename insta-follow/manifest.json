@@ -1,19 +1,21 @@
 {
   "app": "insta-follow",
-  "version": "20261022-2",
-  "notes": "업데이트 확인기 안전장치 보강 (기능 변화 없음)",
-  "date": "2026-10-22 11:53",
+  "version": "20261028-1",
+  "notes": "비슷한 계정으로 트레이너 찾기, 원주 고객 팔로우(10번), 언팔 내역 표시·실패 재시도, 인스타가 막으면 멈춤",
+  "date": "2026-10-28 20:09",
   "files": {
     "check.py": "672b08bb4b01a5317aeed792a7d71ec330dcf7fdfcd3727126d6367da5613b99",
-    "follow_bot.py": "d927464125fd98fb8741a2233d3fa8e21c005f06414f3ce2149ef376d9edef4c",
+    "follow_bot.py": "9d1fe3547899172bf8c18eb9eeebf1a8c9473de139e1ac08fd64615e06ef15a6",
     "queue.py": "dcfe9fa9eaf5488346464e5bb2eea52f6c716bc2c7edd349043aa955bae2abae",
-    "unfollow_bot.py": "89e572d80de51aa78cf312ff07164856807510626afe95490fe864fff8934968",
+    "unfollow_bot.py": "8fe1692c73ad6c315f70dd7189b8c8357a43f26e42cb2e371c81b6bc547fd181",
     "safe_file.py": "897c0ea7c27b3cc4757a0cda215507a06f13984759c65e7bb374320cf4b085c2",
+    "local_follow.py": "75c8e0db3a210d5c53b35dc4df250629c27c940f032bf6b16ade57ee21ff7a8c",
+    "rest_guard.py": "2d3633f2a51ada9bca45d37ff2a605e54f021725fff3b0e7e776f75a467707a9",
     "updater.py": "c8ddd8e20303cb2e61fdc773ed7ce81e30baa8a3f3f72bfe16a1526b391d1f30",
     "_update.json": "4a516d6927017c8ce0212b3f8d0368777a359340dc2f58113b6d66e1b6d3e0cf",
-    "시작.bat": "d03e0ba1044fced0609022047365d37b2bc37c031d86e84446a48f0c0a02e8dc",
+    "시작.bat": "1d9251c422b7e4b688390dbd4351710e012afb6d130cbdbfdac43c55a3d2672d",
     "설치.bat": "2fbb144b98863ca1e2b767f9a8c8e8c664f92dbf3669f8abfe65a5567665333f",
-    "★ 먼저 읽어주세요.txt": "fc21424e2bd7ec86eff1b1600a54351e74606c652ce92fc68ef6f9c9aed7a662",
-    "사용법.md": "f007c821be12c0e6e1fb64a9f3fe6d1eb33780605024a47c6c599f0b69587987"
+    "★ 먼저 읽어주세요.txt": "c528edb1d49ddaac463e4019304d5a3cbd61f1053455a22f1839ac1c769dbae6",
+    "사용법.md": "8c3afff67aa0c2907ea1f471d60576ffe61c1febd1f11792df9129ed16c495d0"
   }
 }
