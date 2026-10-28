@@ -58,7 +58,7 @@ def record_refusal(why):
 
     print("")
     print("!" * 56)
-    print("  인스타가 막았습니다 — 오늘은 여기서 멈춥니다")
+    print("  인스타가 막았습니다 - 오늘은 여기서 멈춥니다")
     print("!" * 56)
     print("  사유: %s" % why)
     print("")

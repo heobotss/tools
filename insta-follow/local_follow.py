@@ -370,7 +370,7 @@ def collect_small(page, ctx, cfg):
         rest_guard.record_refusal("후보 모으기에서 인스타가 「요청이 너무 많다」(429)고 함")
         return -1
     if status != 200 or not isinstance(data, dict) or "users" not in data:
-        log("  응답 이상(HTTP %s) — 오늘은 건너뜁니다." % status)
+        log("  응답 이상(HTTP %s) - 오늘은 건너뜁니다." % status)
         return stock
     known = known_names()
     got = 0
@@ -415,7 +415,7 @@ def do_follow(page, ctx, cfg, dry_run, limit):
             print("  @%-24s 시간 초과 (다음에 다시)" % name)
             fails += 1
             if fails >= cfg["연속실패_한도"]:
-                log("연속 %d번 실패 — 오늘은 멈춥니다." % fails)
+                log("연속 %d번 실패 - 오늘은 멈춥니다." % fails)
                 return False
             continue
         if not U.is_logged_in(ctx):
@@ -434,7 +434,7 @@ def do_follow(page, ctx, cfg, dry_run, limit):
             print("  @%-24s 못 읽음 (다음에 다시)" % name)
             fails += 1
             if fails >= cfg["연속실패_한도"]:
-                log("프로필을 연속 %d번 못 읽었습니다 — 오늘은 멈춥니다." % fails)
+                log("프로필을 연속 %d번 못 읽었습니다 - 오늘은 멈춥니다." % fails)
                 return False
             continue
         fails = 0
@@ -538,7 +538,7 @@ def do_clean(page, ctx, cfg, dry_run, limit):
         if fs is None:
             fails += 1
             if fails >= cfg["연속실패_한도"]:
-                log("맞팔 확인이 연속 %d번 안 됩니다 — 정리는 다음에." % fails)
+                log("맞팔 확인이 연속 %d번 안 됩니다 - 정리는 다음에." % fails)
                 return True
             continue
         fails = 0
@@ -546,7 +546,7 @@ def do_clean(page, ctx, cfg, dry_run, limit):
             if not dry_run:
                 append_csv(MUTUAL, {"확인일": datetime.date.today().isoformat(),
                                     "username": name, "pk": pk}, MUTUAL_FIELDS)
-            print("  @%-24s 맞팔 — 남김" % name)
+            print("  @%-24s 맞팔 - 남김" % name)
             continue
         if not fs["following"] and not fs["outgoing_request"]:
             if not dry_run:
@@ -601,7 +601,7 @@ def do_stat(cfg):
     mutual = len(read_csv(MUTUAL))
     st = read_state()
     print("=" * 52)
-    print("  원주 잠재고객 팔로우 — 현황")
+    print("  원주 잠재고객 팔로우 - 현황")
     print("=" * 52)
     print("  후보 재고(대기) : %d명 / 모은 후보 %d명"
           % (sum(1 for r in cand if r["상태"] == "대기"), len(cand)))
@@ -610,7 +610,7 @@ def do_stat(cfg):
     print("  오늘 언팔       : %d / 한도 %d" % (today_by("언팔"), cfg["지역_언팔_하루"]))
     rec = (st.get("확인기록") or [])[-3:]
     for x in rec:
-        print("  팔로우 남음 확인: %s분 — 남음 %d · 사라짐 %d" % (x["대상일"], x["남음"], x["사라짐"]))
+        print("  팔로우 남음 확인: %s분 - 남음 %d · 사라짐 %d" % (x["대상일"], x["남음"], x["사라짐"]))
     print("  후보를 모으는 가게 : %s" % ", ".join(cfg["지역소스"] or DEFAULT_SOURCES))
     end = rest_guard.rest_until()
     if end:
@@ -621,7 +621,7 @@ def do_stat(cfg):
 
 def run(cfg, dry_run, limit):
     print("=" * 56)
-    print("  원주 잠재고객 팔로우 — %s" % ("판단만 (실제로 안 누름)" if dry_run else "오늘 몫 실행"))
+    print("  원주 잠재고객 팔로우 - %s" % ("판단만 (실제로 안 누름)" if dry_run else "오늘 몫 실행"))
     print("  오늘 팔로우 %d / %d · 오늘 언팔 %d / %d"
           % (today_by("팔로우"), cfg["지역_팔로우_하루"], today_by("언팔"), cfg["지역_언팔_하루"]))
     rest_guard.show_today_total()
