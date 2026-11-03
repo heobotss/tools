@@ -1,1 +1,1 @@
-{"app": "keyword-rank", "repo": "heobotss/tools", "branch": "main", "name": "키워드 순위 추적기", "detect": ["순위추적.py", "설정_키워드.txt", "설정_블로그.json"]}
+{"app": "keyword-rank", "repo": "heobotss/tools", "branch": "main", "name": "키워드 순위 추적기", "detect": ["순위추적.py", "설정_키워드.txt", "설정_블로그.json"], "base": "https://kpubgeejyiupdvbbdxwt.supabase.co/functions/v1/tool-update/weoWn1AddAyJD7aQ6GZe08H7gucEBAklR3o4o37EQA4/keyword-rank/"}
