@@ -1,8 +1,8 @@
 {
   "app": "insta-follow",
-  "version": "20261028-2",
-  "notes": "한국어 창에서 줄표(—)가 ?로 보이던 것 고침",
-  "date": "2026-10-28 20:10",
+  "version": "20261103-1",
+  "notes": "업데이트 받는 길을 우리 서버로 옮김 (기능 변화 없음)",
+  "date": "2026-11-03 10:35",
   "files": {
     "check.py": "672b08bb4b01a5317aeed792a7d71ec330dcf7fdfcd3727126d6367da5613b99",
     "follow_bot.py": "9d1fe3547899172bf8c18eb9eeebf1a8c9473de139e1ac08fd64615e06ef15a6",
@@ -11,8 +11,8 @@
     "safe_file.py": "897c0ea7c27b3cc4757a0cda215507a06f13984759c65e7bb374320cf4b085c2",
     "local_follow.py": "166b4730143f0ec29e79a945eca482d23188cd2a7268dc20d9e041752d2bf55d",
     "rest_guard.py": "158142df38bdfc0c48eaa628208de61059d1e9a9f49ba3e1dab4d93f56977054",
-    "updater.py": "c8ddd8e20303cb2e61fdc773ed7ce81e30baa8a3f3f72bfe16a1526b391d1f30",
-    "_update.json": "4a516d6927017c8ce0212b3f8d0368777a359340dc2f58113b6d66e1b6d3e0cf",
+    "updater.py": "df236bb347ecac27d715326d4da02ba8220ce3476d8bef7c85dd4d8e184d7512",
+    "_update.json": "54e51d7b16d485e77b21eac681ab77be5d18e57e0e6c3cf09b05f3d75dc5dc52",
     "시작.bat": "1d9251c422b7e4b688390dbd4351710e012afb6d130cbdbfdac43c55a3d2672d",
     "설치.bat": "2fbb144b98863ca1e2b767f9a8c8e8c664f92dbf3669f8abfe65a5567665333f",
     "★ 먼저 읽어주세요.txt": "c528edb1d49ddaac463e4019304d5a3cbd61f1053455a22f1839ac1c769dbae6",
