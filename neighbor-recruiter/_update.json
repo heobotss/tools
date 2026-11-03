@@ -1,1 +1,1 @@
-{"app": "neighbor-recruiter", "repo": "heobotss/tools", "branch": "main", "name": "이웃모집기", "detect": ["run_auto.py", "3_매일실행.bat"]}
+{"app": "neighbor-recruiter", "repo": "heobotss/tools", "branch": "main", "name": "이웃모집기", "detect": ["run_auto.py", "3_매일실행.bat"], "base": "https://kpubgeejyiupdvbbdxwt.supabase.co/functions/v1/tool-update/weoWn1AddAyJD7aQ6GZe08H7gucEBAklR3o4o37EQA4/neighbor-recruiter/"}

@@ -9,7 +9,7 @@
     python updater.py --install    처음 설치용: 실행 중이 아닐 때라 .bat 도 바로 바꾼다
     python updater.py --check      확인만 (아무것도 안 바꿈)
 
-설정은 같은 폴더의 _update.json: {"app": "프로그램 폴더 이름", "repo": "heobotss/tools", "branch": "main"}
+설정은 같은 폴더의 _update.json: {"app": "프로그램 폴더 이름", "repo": "heobotss/tools", "branch": "main", "base": "우리 서버 경로(있으면 먼저)"}
 사용자 파일(설정·기록·로그인)은 manifest 에 아예 없으므로 절대 건드리지 않는다.
 외부 부품을 쓰지 않는다 (파이썬 기본 기능만).
 """
@@ -71,21 +71,27 @@ def main(argv):
     try:
         with open(CONF, encoding="utf-8") as f:
             conf = json.load(f)
-        base = "https://raw.githubusercontent.com/%s/%s/%s/" % (
+        raw = "https://raw.githubusercontent.com/%s/%s/%s/" % (
             conf.get("repo", "heobotss/tools"), conf.get("branch", "main"), conf["app"])
-        base = os.environ.get("HEOBOTSS_UPDATE_BASE") or base  # 시험용 — 평소엔 비어 있다
+        # 2026-11-03: 우리 서버 경로(conf 의 base)를 먼저 보고, 안 되면 깃허브. 시험용 환경변수가 맨 앞.
+        bases = [b for b in (os.environ.get("HEOBOTSS_UPDATE_BASE"), conf.get("base"), raw) if b]
     except Exception:
         return 0  # 자동 업데이트 설정이 없는 옛 설치본 — 조용히 넘어간다
 
-    try:
-        manifest = json.loads(fetch(base + "manifest.json").decode("utf-8"))
-        remote = manifest["version"]
-        files = manifest["files"]
-    except Exception:
+    mine = local_version()
+    manifest = None
+    for base in bases:
+        try:
+            manifest = json.loads(fetch(base + "manifest.json?v=" + urllib.request.quote(mine or "new")).decode("utf-8"))
+            remote = manifest["version"]
+            files = manifest["files"]
+            break
+        except Exception:
+            manifest = None
+    if manifest is None:
         say("[업데이트] 인터넷에서 확인하지 못해 지금 버전으로 실행합니다.")
         return 0
 
-    mine = local_version()
     if remote == mine and not install:
         return 0  # 최신 — 조용히 메뉴로
 

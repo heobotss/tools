@@ -1,8 +1,8 @@
 {
   "app": "neighbor-recruiter",
-  "version": "20261022-2",
-  "notes": "자동 업데이트 시작 · 이웃그룹을 계정별로 저장(덮어써도 안 지워짐)",
-  "date": "2026-10-22 11:47",
+  "version": "20261103-1",
+  "notes": "업데이트 받는 길을 우리 서버로 옮김 (기능 변화 없음)",
+  "date": "2026-11-03 10:35",
   "files": {
     "공용.py": "8e7f1c20304cf778a0f942913adfa131dee0a3b5f00b9d28b0e7a259c46bcc1c",
     "자동운행.py": "4e20ef8426c894075e9098c7a1069e467eee24e0f7a82d519291ac661296b679",
@@ -16,7 +16,7 @@
     "2_로그인.bat": "91e78f75a13d7d76469418e6b9a201c94742049fba0b57b170d8ea2b49eae775",
     "3_매일실행.bat": "96ae9325c623371f0bc91599e42f28fba260ef9ba9aa899348edb6a34899fccc",
     "사용 안내.txt": "2f4aa5529fe0ced20cd94586b1bfb32503ae72c654ed0d6a8b78bb5a11b1d5c6",
-    "updater.py": "c8ddd8e20303cb2e61fdc773ed7ce81e30baa8a3f3f72bfe16a1526b391d1f30",
-    "_update.json": "296a32d55fefece0762cf53a643caf773edcbabf877bccbe1e112b5d62119e76"
+    "updater.py": "df236bb347ecac27d715326d4da02ba8220ce3476d8bef7c85dd4d8e184d7512",
+    "_update.json": "07b4645f294deef711691fd567de429a32386181d1d1d77d0c6702bd196a1ca0"
   }
 }
