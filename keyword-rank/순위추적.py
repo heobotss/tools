@@ -208,7 +208,8 @@ def collect_serp(keywords, page):
     """키워드별 {blog_posts, places} 수집. page 는 Playwright page."""
     results = {}
     for idx, kw in enumerate(keywords, 1):
-        entry = {"blog_posts": [], "places": [], "errors": []}
+        # 시각 — 블로그 탭 순위는 몇 시간 사이에도 움직인다. 직접 확인한 순위와 대조할 때 쓴다 (2026-11-09)
+        entry = {"blog_posts": [], "places": [], "errors": [], "시각": datetime.now().strftime("%H:%M")}
 
         # ── 블로그 탭 ──
         try:
@@ -325,7 +326,13 @@ def analyze(kw, entry, volumes, blog_cfg, cache, stats):
            #   다음에 이상한 순위가 보이면 기록/날짜.json 의 이 칸을 열어 보면 된다.
            "플레이스상위": [[i + 1, p.get("id", ""), p.get("name", "")]
                          for i, p in enumerate(entry.get("places", [])[:15])],
-           "플레이스주소": entry.get("place_frame", "")}
+           "플레이스주소": entry.get("place_frame", ""),
+           # ⚠ 2026-11-09 센터 직원 지적 — 표를 만든 직후 폰으로 본 블로그 순위가 1~4계단 달랐다.
+           #   대표님 PC에서 같은 순간 화면 카드 순서·모바일·로그인 상태와 대조하면 늘 같았고,
+           #   노트북이 그때 받은 목록이 안 남아 원인을 못 가렸다. 그래서 받은 30개 목록과 시각을 남긴다.
+           "수집시각": entry.get("시각", ""),
+           "블로그상위": [[i + 1, p.get("blog", ""), p.get("post", "")]
+                       for i, p in enumerate(entry.get("blog_posts", [])[:BLOG_TOP_N])]}
 
     for rank, post in enumerate(entry["blog_posts"], 1):
         bid = post["blog"].lower()
@@ -532,7 +539,9 @@ def reorder_sheets(wb):
         wb.active = wb.worksheets.index(dated[0])  # 열면 최신 날짜 시트
 
 
-def write_excel(rows, prev_date, prev_rows):
+def write_excel(rows, prev_date, prev_rows, 시트날짜=None, 덮어쓰기=False):
+    """시트날짜: 'YYYY-MM-DD' — 지난 주차를 다시 그릴 때 쓴다(없으면 오늘)
+    덮어쓰기: 같은 이름 시트가 있으면 지우고 새로 만든다 (다시분류 전용)"""
     from openpyxl import Workbook, load_workbook
     from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
@@ -543,12 +552,17 @@ def write_excel(rows, prev_date, prev_rows):
     wb = load_workbook(XLSX_FILE) if XLSX_FILE.exists() else Workbook()
     if "Sheet" in wb.sheetnames and len(wb.sheetnames) == 1 and wb["Sheet"].max_row == 1:
         del wb["Sheet"]
-    # 같은 날 다시 돌리면 덮어쓰지 않고 (2), (3) 시트로 추가 — 발행 후 재확인용
-    base_name = date.today().strftime("%y.%m.%d")
-    sheet_name, k = base_name, 2
-    while sheet_name in wb.sheetnames:
-        sheet_name = f"{base_name} ({k})"
-        k += 1
+    base_name = (date.fromisoformat(시트날짜) if 시트날짜 else date.today()).strftime("%y.%m.%d")
+    if 덮어쓰기:
+        for n in [s for s in wb.sheetnames if s == base_name or s.startswith(base_name + " (")]:
+            del wb[n]
+        sheet_name = base_name
+    else:
+        # 같은 날 다시 돌리면 덮어쓰지 않고 (2), (3) 시트로 추가 — 발행 후 재확인용
+        sheet_name, k = base_name, 2
+        while sheet_name in wb.sheetnames:
+            sheet_name = f"{base_name} ({k})"
+            k += 1
     ws = wb.create_sheet(sheet_name, 0)
 
     yellow = PatternFill("solid", fgColor="FFFF00")
@@ -562,7 +576,9 @@ def write_excel(rows, prev_date, prev_rows):
                + trainers + ["리뷰어", "플레이스", "노출점수"])
 
     ws.cell(1, 1, "완성 시각").fill = yellow
-    ws.cell(1, 2, datetime.now().strftime("%Y.%m.%d %H:%M")).fill = yellow
+    시각들 = sorted(r.get("수집시각") for r in rows if r.get("수집시각"))
+    수집 = f" (수집 {시각들[0]}~{시각들[-1]})" if 시각들 else ""
+    ws.cell(1, 2, datetime.now().strftime("%Y.%m.%d %H:%M") + 수집).fill = yellow
     ws.cell(1, 4, f"{센터표시()} (블로그 30위·플레이스 70위까지 추적, 플레이스는 광고 제외)").fill = yellow
     if prev_date:
         ws.cell(1, 3, f"비교: {prev_date}").fill = yellow
@@ -657,6 +673,8 @@ def write_excel(rows, prev_date, prev_rows):
     put("· ▲2=2계단 상승(파랑) · ▼3=하락(빨강) · 신규=새로 진입 · 이탈(전7)=지난번 7위였는데 순위권 밖(회색)")
     put("· 순위가 5개 이상이면 「1,2,3,4 외2」로 줄여 표시 · 같은 날 다시 돌리면 (2) 시트로 추가됩니다")
     put("· 「확인못함」 = 그때 캡차·지도 오류로 못 쟀다는 뜻(순위 하락 아님) · 변동(▲▼신규이탈)은 맨 위 「비교:날짜」 기준")
+    put("· 블로그 순위는 네이버 블로그 탭 기준, 키워드마다 수집한 그 시각의 순위입니다(몇 시간 사이에도 움직임)."
+        " 직접 본 순위와 다르면 기록 폴더 날짜 파일의 「블로그상위」(그때 받은 30개 목록)로 대조합니다")
     put("")
 
     put("■ 이번 주 글감 후보 (기대 유입 큰 순 · 난이도는 검색량 기준 추정)", True, section)
@@ -775,11 +793,142 @@ def write_excel(rows, prev_date, prev_rows):
 
 # ──────────────────────────── main ────────────────────────────
 
+def 선생님블로그_합치기(blog_cfg, log=print):
+    """설정_블로그.json 「선생님」 + 트레이너 프로그램에 등록된 블로그를 합친다
+
+    왜 (2026-11-03 센터 직원 지적):
+      선생님이 새 블로그 아이디를 프로그램에 추가해도 설정_블로그.json 에는 안 들어가서,
+      그 아이디로 쓴 글이 상위에 떠도 「우리 선생님 글」이 아니라 **리뷰어(남의 글)**로 잡혔다.
+      11-02 주차에서 박상빈 선생님 wonjupt 가 4건(원주도수치료 1위 포함) 리뷰어로 들어가 있었다.
+      목록을 두 군데서 따로 들고 있던 것이 원인이라, 이제 돌 때마다 합친다.
+
+    이름이 겹치면 합치지 않고 경고만 한다 — 남의 블로그를 우리 것으로 세는 것이 더 나쁘다"""
+    import glob
+    프로그램 = {}
+    겹침 = set()
+    for f in glob.glob(str(HERE / "트레이너" / "*.json")):
+        try:
+            c = json.load(open(f, encoding="utf-8"))
+        except Exception:
+            continue
+        n = re.sub(r"\s+", "", c.get("이름", ""))
+        if n in 프로그램 and 프로그램[n]["파일"] != f:
+            겹침.add(n)
+        프로그램.setdefault(n, {"블로그": [], "파일": f})["블로그"] += c.get("블로그", [])
+    더함 = []
+    for 이름 in list(blog_cfg.get("선생님", {})):
+        n = re.sub(r"\s+", "", 이름)
+        if n in 겹침:
+            log(f"  ⚠ 「{이름}」 이름으로 등록된 분이 둘 이상이라 블로그를 합치지 않았습니다 "
+                f"— 설정_블로그.json 에 직접 적어 주세요")
+            continue
+        있는것 = {b.lower() for b in blog_cfg["선생님"][이름]}
+        for b in 프로그램.get(n, {}).get("블로그", []):
+            if b.lower() not in 있는것:
+                blog_cfg["선생님"][이름].append(b)
+                있는것.add(b.lower())
+                더함.append(f"{이름}/{b}")
+    if 더함:
+        log(f"  ➕ 프로그램에 등록된 블로그 {len(더함)}개를 선생님 목록에 합쳤습니다: {', '.join(더함)}")
+    총 = sum(len(v) for v in blog_cfg.get("선생님", {}).values())
+    log(f"  · 우리 선생님 블로그 {총}개로 순위를 가립니다 "
+        f"({' · '.join(f'{k} {len(v)}개' for k, v in blog_cfg.get('선생님', {}).items())})")
+    return blog_cfg
+
+
+def 다시분류(날짜=None, log=print):
+    """이미 잰 주차 파일을 다시 가른다 — 선생님 블로그 목록이 늦게 채워졌을 때 쓴다.
+    순위를 다시 재지 않는다(그날 숫자 그대로). 「리뷰어」에 잘못 들어간 선생님 글만
+    선생님 칸으로 옮기고 노출점수를 다시 계산한 뒤 엑셀을 다시 만든다 (2026-11-03)"""
+    files = sorted(HISTORY_DIR.glob("20??-??-??.json"))
+    target = (HISTORY_DIR / f"{날짜}.json") if 날짜 else (files[-1] if files else None)
+    if not target or not target.exists():
+        log(f"주차 파일을 찾지 못했습니다: {날짜 or '(최신)'}")
+        return False
+    with open(BLOGS_FILE, encoding="utf-8") as f:
+        blog_cfg = 선생님블로그_합치기(json.load(f), log)
+    소유 = {b.lower(): n for n, bs in blog_cfg["선생님"].items() for b in bs}
+    rows = json.loads(target.read_text(encoding="utf-8"))
+
+    def 제목별글번호(bid):
+        """{제목 앞 22글자: 글번호} — 리뷰어글에는 글번호가 없어서 RSS 제목으로 메운다"""
+        import xml.etree.ElementTree as ET
+        try:
+            req = urllib.request.Request(f"https://rss.blog.naver.com/{bid}.xml",
+                                         headers={"User-Agent": UA_MOBILE})
+            with urllib.request.urlopen(req, timeout=15) as r:
+                root = ET.fromstring(r.read())
+        except Exception:
+            return {}
+        out = {}
+        for item in root.iter("item"):
+            link = item.findtext("link") or ""
+            m = re.search(r"logNo=(\d{8,})", link) or re.search(r"/(\d{8,})", link)
+            t = re.sub(r"\s+", "", item.findtext("title") or "")[:22]
+            if m and t:
+                out[t] = m.group(1)
+        return out
+
+    글번호 = {}
+    for bid in {g["블로그"].lower() for r in rows for g in r.get("리뷰어글", [])
+                if g["블로그"].lower() in 소유}:
+        for t, no in 제목별글번호(bid).items():
+            글번호[(bid, t)] = no
+
+    옮김 = []
+    for row in rows:
+        남길, 남길순위 = [], []
+        for g in row.get("리뷰어글", []):
+            bid = g["블로그"].lower()
+            who = 소유.get(bid)
+            if not who:
+                남길.append(g)
+                남길순위.append(g["순위"])
+                continue
+            row.setdefault("선생님", {}).setdefault(who, []).append(g["순위"])
+            row["선생님"][who].sort()
+            row.setdefault("선생님상세", []).append(
+                {"선생님": who, "블로그": bid,
+                 "글": 글번호.get((bid, re.sub(r"\s+", "", g.get("제목", ""))[:22]), ""),
+                 "순위": g["순위"], "키워드": row["키워드"], "재분류": "2026-11-03"})
+            옮김.append((row["키워드"], g["순위"], bid, who))
+        row["리뷰어글"], row["리뷰어"] = 남길, sorted(남길순위)
+        best = min((r for v in row.get("선생님", {}).values() for r in v), default=None)
+        row["노출점수"] = round(row["합계"] * ctr_of(best)
+                            + row["합계"] * ctr_of(row.get("플레이스")) * 0.5)
+
+    if not 옮김:
+        log(f"· {target.stem}: 옮길 글이 없습니다 (이미 바르게 갈려 있습니다)")
+        return True
+    백업 = target.with_name(target.stem + "_재분류전.json")
+    if not 백업.exists():
+        백업.write_text(json.dumps(json.loads(target.read_text(encoding="utf-8")),
+                                  ensure_ascii=False, indent=1), encoding="utf-8")
+    target.write_text(json.dumps(rows, ensure_ascii=False, indent=1), encoding="utf-8")
+    log(f"✅ {target.stem}: 리뷰어 → 선생님으로 {len(옮김)}건 옮겼습니다")
+    for kw, rk, b, who in 옮김:
+        log(f"   {kw} {rk}위 · {b} → {who} 선생님")
+    # 비교 기준은 「그 주차의 직전 주차」다 — load_previous() 는 오늘만 빼므로
+    # 지난 주차를 다시 그릴 때 자기 자신을 이전으로 잡는다 (변동 표시가 전부 사라진다)
+    앞선것 = [f for f in files if f.stem < target.stem]
+    prev_date = 앞선것[-1].stem if 앞선것 else None
+    prev_rows = json.loads(앞선것[-1].read_text(encoding="utf-8")) if 앞선것 else None
+    write_excel(rows, prev_date, prev_rows, 시트날짜=target.stem, 덮어쓰기=True)
+    log(f"· 엑셀 「{date.fromisoformat(target.stem):%y.%m.%d}」 시트를 다시 만들었습니다 "
+        f"(변동은 {prev_date or '없음'} 대비) → {XLSX_FILE.name}")
+    log(f"· 고치기 전 데이터는 {백업.name} 에 남겼습니다")
+    return True
+
+
 def main():
+    if len(sys.argv) > 1 and sys.argv[1] == "다시분류":
+        다시분류(sys.argv[2] if len(sys.argv) > 2 else None)
+        return
     with open(API_CONFIG, encoding="utf-8") as f:
         api_cfg = json.load(f)
     with open(BLOGS_FILE, encoding="utf-8") as f:
         blog_cfg = json.load(f)
+    blog_cfg = 선생님블로그_합치기(blog_cfg)
     keywords = list(dict.fromkeys(  # 중복 줄 제거 (순서 유지)
         ln.strip() for ln in KEYWORDS_FILE.read_text(encoding="utf-8").splitlines() if ln.strip()))
     test_mode = len(sys.argv) > 1

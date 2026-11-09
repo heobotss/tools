@@ -75,6 +75,10 @@ def main(argv):
             conf.get("repo", "heobotss/tools"), conf.get("branch", "main"), conf["app"])
         # 2026-11-03: 우리 서버 경로(conf 의 base)를 먼저 보고, 안 되면 깃허브. 시험용 환경변수가 맨 앞.
         bases = [b for b in (os.environ.get("HEOBOTSS_UPDATE_BASE"), conf.get("base"), raw) if b]
+        if conf.get("base_tmpl"):  # 구독판: 열쇠로 서버에서만 받는다. 깃허브로 넘어가지 않는다
+            with open(os.path.join(HERE, "_열쇠.txt"), encoding="utf-8") as f:
+                tmpl = os.environ.get("HEOBOTSS_SUB_BASE") or conf["base_tmpl"]
+                bases = [tmpl.format(key=f.read().strip())]
     except Exception:
         return 0  # 자동 업데이트 설정이 없는 옛 설치본 — 조용히 넘어간다
 
