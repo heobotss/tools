@@ -836,6 +836,82 @@ def 선생님블로그_합치기(blog_cfg, log=print):
     return blog_cfg
 
 
+자동목록_파일 = HERE / "_선생님블로그.dat"
+
+
+def _목록열쇠():
+    """암호 열쇠 = 이 PC 검색광고 API secret_key 에서 뽑는다. 대표님 PC 와 센터 노트북만 같은 키를 쓴다"""
+    try:
+        sk = json.loads(API_CONFIG.read_text(encoding="utf-8")).get("secret_key", "")
+    except Exception:
+        return None
+    return hashlib.sha256(("heobotss-teacher-blogs|" + sk).encode()).digest() if sk else None
+
+
+def _목록흐름(key, nonce, n):
+    out = b""
+    i = 0
+    while len(out) < n:
+        out += hmac.new(key, nonce + i.to_bytes(4, "big"), hashlib.sha256).digest()
+        i += 1
+    return out[:n]
+
+
+def 선생님목록_잠그기(data):
+    """대표님 PC 에서 배포판을 구울 때 부른다 — 선생님 블로그 목록을 암호문으로 만든다"""
+    import os
+    key = _목록열쇠()
+    if not key:
+        raise RuntimeError("이 PC 에 검색광고 API secret_key 가 없어 목록을 잠글 수 없습니다")
+    plain = json.dumps(data, ensure_ascii=False).encode("utf-8")
+    nonce = os.urandom(16)
+    ct = bytes(a ^ b for a, b in zip(plain, _목록흐름(key, nonce, len(plain))))
+    tag = hmac.new(key, b"tag" + nonce + ct, hashlib.sha256).digest()
+    return {"v": 1, "nonce": base64.b64encode(nonce).decode(), "data": base64.b64encode(ct).decode(),
+            "tag": base64.b64encode(tag).decode()}
+
+
+def 선생님목록_자동반영(blog_cfg, log=print):
+    """자동 업데이트로 받은 「_선생님블로그.dat」(암호문)을 열어 선생님 블로그를 더한다
+
+    왜 (2026-11-09 대표님 「내 쪽에서 업데이트하면 직원 PC에도 적용되게」):
+      센터 노트북의 설정_블로그.json 은 자동 업데이트가 안 건드린다. 그래서 선생님이 새 블로그를
+      등록해도 노트북에선 그 글이 리뷰어(남의 글)로 빠졌다(박상빈 팀장 wonjupt).
+      목록을 공개 저장소에 그대로 올릴 수는 없어서 **이 PC 의 검색광고 API 열쇠로만 열리는 암호문**으로
+      함께 보낸다. 대표님 PC·센터 노트북처럼 같은 열쇠를 쓰는 PC 만 열리고, 플레이스 번호까지 같아야 반영한다.
+      못 열면 아무것도 바꾸지 않는다 — 설정_블로그.json 그대로 돈다."""
+    if not 자동목록_파일.exists():
+        return blog_cfg
+    key = _목록열쇠()
+    try:
+        box = json.loads(자동목록_파일.read_text(encoding="utf-8"))
+        nonce, ct = base64.b64decode(box["nonce"]), base64.b64decode(box["data"])
+        ok = key and hmac.compare_digest(base64.b64decode(box["tag"]),
+                                         hmac.new(key, b"tag" + nonce + ct, hashlib.sha256).digest())
+        if not ok:
+            log("  · 선생님 블로그 자동 목록: 이 PC 용이 아니라 건너뜁니다 (설정_블로그.json 그대로 씁니다)")
+            return blog_cfg
+        data = json.loads(bytes(a ^ b for a, b in zip(ct, _목록흐름(key, nonce, len(ct)))).decode("utf-8"))
+    except Exception as e:
+        log(f"  · 선생님 블로그 자동 목록을 못 읽었습니다({type(e).__name__}) — 설정_블로그.json 그대로 씁니다")
+        return blog_cfg
+    if str(data.get("플레이스ID", "")) != str(blog_cfg.get("플레이스ID", "")):
+        log("  · 선생님 블로그 자동 목록: 다른 센터 목록이라 건너뜁니다")
+        return blog_cfg
+    더함 = []
+    for 이름, ids in data.get("선생님", {}).items():
+        cur = blog_cfg.setdefault("선생님", {}).setdefault(이름, [])
+        있는것 = {b.lower() for b in cur}
+        for b in ids:
+            if b.lower() not in 있는것:
+                cur.append(b)
+                있는것.add(b.lower())
+                더함.append(f"{이름}/{b}")
+    log(f"  🔄 선생님 블로그 자동 목록({data.get('만든날', '')}) 반영"
+        + (f" — 새로 더함 {len(더함)}개: {', '.join(더함)}" if 더함 else " — 이미 다 들어 있음"))
+    return blog_cfg
+
+
 def 다시분류(날짜=None, log=print):
     """이미 잰 주차 파일을 다시 가른다 — 선생님 블로그 목록이 늦게 채워졌을 때 쓴다.
     순위를 다시 재지 않는다(그날 숫자 그대로). 「리뷰어」에 잘못 들어간 선생님 글만
@@ -846,7 +922,7 @@ def 다시분류(날짜=None, log=print):
         log(f"주차 파일을 찾지 못했습니다: {날짜 or '(최신)'}")
         return False
     with open(BLOGS_FILE, encoding="utf-8") as f:
-        blog_cfg = 선생님블로그_합치기(json.load(f), log)
+        blog_cfg = 선생님목록_자동반영(선생님블로그_합치기(json.load(f), log), log)
     소유 = {b.lower(): n for n, bs in blog_cfg["선생님"].items() for b in bs}
     rows = json.loads(target.read_text(encoding="utf-8"))
 
@@ -928,7 +1004,7 @@ def main():
         api_cfg = json.load(f)
     with open(BLOGS_FILE, encoding="utf-8") as f:
         blog_cfg = json.load(f)
-    blog_cfg = 선생님블로그_합치기(blog_cfg)
+    blog_cfg = 선생님목록_자동반영(선생님블로그_합치기(blog_cfg))
     keywords = list(dict.fromkeys(  # 중복 줄 제거 (순서 유지)
         ln.strip() for ln in KEYWORDS_FILE.read_text(encoding="utf-8").splitlines() if ln.strip()))
     test_mode = len(sys.argv) > 1

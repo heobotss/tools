@@ -1,14 +1,15 @@
 {
   "app": "keyword-rank",
-  "version": "20261109-1",
-  "notes": "키워드마다 수집 시각과 그때 받은 블로그 30위 목록을 기록에 남기고, 표 맨 위에 수집 시각 범위를 표시",
-  "date": "2026-11-09 23:21",
+  "version": "20261110-1",
+  "notes": "선생님 블로그 목록을 암호문으로 함께 보내, 센터 노트북에 새 블로그가 자동으로 반영됨",
+  "date": "2026-11-10 13:46",
   "files": {
-    "순위추적.py": "f1e891270b1550440ab3645e1cd37be82c76eb8ce702682d869f9bb3720d7555",
+    "순위추적.py": "b67850cd9ca7c018ee7036177b9da044771231862b131bf394b204d7ae368b8e",
     "설치.bat": "493b851f355b0c8e5da2ec7370246634e7d1b656bb75164e26c8c380779d7c28",
     "실행.bat": "8393e874be1919b74a8da9f168977194baae8d71f1996ad52246bddf4a3246aa",
     "★ 먼저 읽어주세요.txt": "24e9d7f7d68ffdb20c7eff509eef2e9ee9e61a8530805a5f3b2441fcb83dac1c",
     "updater.py": "d133f8dbd02a1f4af99ef6e71dd5ad97be8c08e902465460d5eea61ef4380082",
-    "_update.json": "e2a4d27766bc6e570675bc36f4c1e6fb6f6b7c7cad1df63412618b5d60ae2b80"
+    "_update.json": "e2a4d27766bc6e570675bc36f4c1e6fb6f6b7c7cad1df63412618b5d60ae2b80",
+    "_선생님블로그.dat": "ddc0d2781572fb07c5cbb730de4677153e4b3c9f81b3643c411916252b233a2c"
   }
 }
